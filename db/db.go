@@ -198,15 +198,26 @@ func StringIsNull[T any](s *T, null string) pgtype.Text {
 	return pgtype.Text{String: fmt.Sprintf("%v", *s), Status: pgtype.Present}
 }
 
-func EmptyIntIsNull(int *int64) pgtype.Int8 {
-	return IntIsNull(int, 0)
+func EmptyLongIntIsNull(int *int64) pgtype.Int8 {
+	return LongIntIsNull(int, 0)
 }
 
-func IntIsNull(int *int64, null int64) pgtype.Int8 {
+func LongIntIsNull(int *int64, null int64) pgtype.Int8 {
 	if int == nil || *int == null {
 		return pgtype.Int8{Status: pgtype.Null}
 	}
 	return pgtype.Int8{Int: *int, Status: pgtype.Present}
+}
+
+func EmptyIntIsNull(int *int32) pgtype.Int4 {
+	return IntIsNull(int, 0)
+}
+
+func IntIsNull(int *int32, null int32) pgtype.Int4 {
+	if int == nil || *int == null {
+		return pgtype.Int4{Status: pgtype.Null}
+	}
+	return pgtype.Int4{Int: *int, Status: pgtype.Present}
 }
 
 func EmptySmallIntIsNull(int *int16) pgtype.Int2 {
