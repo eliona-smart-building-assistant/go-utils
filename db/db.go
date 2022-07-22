@@ -26,16 +26,76 @@ import (
 	"github.com/jackc/pgx/v4"
 	"github.com/jackc/pgx/v4/pgxpool"
 	"io/ioutil"
+	"net/url"
 	"path/filepath"
 	"reflect"
+	"strconv"
 	"sync"
 	"time"
 )
 
 // ConnectionString returns the connection string defined in the environment variable CONNECTION_STRING.
-// If not defined, the method returns postgres://user:secret@database as default.
 func ConnectionString() string {
-	return common.Getenv("CONNECTION_STRING", "postgres://user:secret@database")
+	return common.Getenv("CONNECTION_STRING", "")
+}
+
+// Hostname returns the defined hostname configured in CONNECTION_STRING
+func Hostname() string {
+	connectionStringUrl := connectionStringUrl()
+	if connectionStringUrl != nil {
+		return connectionStringUrl.Hostname()
+	}
+	return ""
+}
+
+// Port returns the defined port configured in CONNECTION_STRING
+func Port() int {
+	connectionStringUrl := connectionStringUrl()
+	if connectionStringUrl != nil {
+		port, err := strconv.Atoi(connectionStringUrl.Port())
+		if err == nil {
+			return port
+		}
+	}
+	return 0
+}
+
+// Username returns the defined username configured in CONNECTION_STRING
+func Username() string {
+	connectionStringUrl := connectionStringUrl()
+	if connectionStringUrl != nil {
+		return connectionStringUrl.User.Username()
+	}
+	return ""
+}
+
+// Password returns the defined password configured in CONNECTION_STRING
+func Password() string {
+	connectionStringUrl := connectionStringUrl()
+	if connectionStringUrl != nil {
+		password, exists := connectionStringUrl.User.Password()
+		if exists {
+			return password
+		}
+	}
+	return ""
+}
+
+// DatabaseName returns the defined database name configured in CONNECTION_STRING
+func DatabaseName() string {
+	connectionStringUrl := connectionStringUrl()
+	if connectionStringUrl != nil {
+		return connectionStringUrl.Path[1:]
+	}
+	return common.Getenv("PGDATABASE", "")
+}
+
+func connectionStringUrl() *url.URL {
+	parse, err := url.Parse(ConnectionString())
+	if err != nil {
+		return nil
+	}
+	return parse
 }
 
 // The Connection interface allows mocking database connection for testing
@@ -49,7 +109,7 @@ type Connection interface {
 func ConnectionConfig() *pgx.ConnConfig {
 	config, err := pgx.ParseConfig(ConnectionString())
 	if err != nil {
-		log.Fatal("Database", "Unable to parse database URL: %v", err)
+		log.Fatal("DatabaseName", "Unable to parse database URL: %v", err)
 	}
 	return config
 }
@@ -57,7 +117,7 @@ func ConnectionConfig() *pgx.ConnConfig {
 func PoolConfig() *pgxpool.Config {
 	config, err := pgxpool.ParseConfig(ConnectionString())
 	if err != nil {
-		log.Fatal("Database", "Unable to parse database URL: %v", err)
+		log.Fatal("DatabaseName", "Unable to parse database URL: %v", err)
 	}
 	return config
 }
@@ -65,12 +125,12 @@ func PoolConfig() *pgxpool.Config {
 func ExecFile(connection Connection, path string) error {
 	sql, err := ioutil.ReadFile(filepath.Join(path))
 	if err != nil {
-		log.Error("Database", "Unable to read sql file %s: %v", path, err)
+		log.Error("DatabaseName", "Unable to read sql file %s: %v", path, err)
 		return err
 	}
 	_, err = connection.Exec(context.Background(), string(sql))
 	if err != nil {
-		log.Error("Database", "Error during execute sql file %s: %v", path, err)
+		log.Error("DatabaseName", "Error during execute sql file %s: %v", path, err)
 		return err
 	}
 	return nil
@@ -80,18 +140,18 @@ func ExecFile(connection Connection, path string) error {
 func NewConnection() *pgx.Conn {
 	connection, err := pgx.ConnectConfig(context.Background(), ConnectionConfig())
 	if err != nil {
-		log.Fatal("Database", "Unable to create connection to database: %v", err)
+		log.Fatal("DatabaseName", "Unable to create connection to database: %v", err)
 	}
-	log.Debug("Database", "Connection created")
+	log.Debug("DatabaseName", "Connection created")
 	return connection
 }
 
 func NewPool() *pgxpool.Pool {
 	pool, err := pgxpool.ConnectConfig(context.Background(), PoolConfig())
 	if err != nil {
-		log.Fatal("Database", "Unable to create pool for database: %v", err)
+		log.Fatal("DatabaseName", "Unable to create pool for database: %v", err)
 	}
-	log.Debug("Database", "Pool created")
+	log.Debug("DatabaseName", "Pool created")
 	return pool
 }
 
@@ -126,7 +186,7 @@ func Listen[T any](connection *pgx.Conn, channel string, payloads chan T) {
 	defer cancel()
 	_, err := connection.Exec(contextWithCancel, "LISTEN "+channel)
 	if err != nil {
-		log.Error("Database", "Error listening on channel '%s': %v", channel, err)
+		log.Error("DatabaseName", "Error listening on channel '%s': %v", channel, err)
 	}
 	for {
 		notification, _ := waitForNotification(contextWithCancel, connection)
@@ -134,7 +194,7 @@ func Listen[T any](connection *pgx.Conn, channel string, payloads chan T) {
 			var payload T
 			err := json.Unmarshal([]byte(notification.Payload), &payload)
 			if err != nil {
-				log.Error("Database", "Unmarshal error during listening: %v", err)
+				log.Error("DatabaseName", "Unmarshal error during listening: %v", err)
 			}
 			payloads <- payload
 		}
@@ -154,7 +214,7 @@ func waitForNotification(origCtx context.Context, connection *pgx.Conn) (*pgconn
 		err = connection.Ping(ctx)
 	}
 	if err != nil {
-		log.Error("Database", "Error waiting for notification: %v", err)
+		log.Error("DatabaseName", "Error waiting for notification: %v", err)
 	}
 	return nil, err
 }
@@ -163,7 +223,7 @@ func waitForNotification(origCtx context.Context, connection *pgx.Conn) (*pgconn
 func Exec(connection Connection, sql string, args ...interface{}) error {
 	_, err := connection.Exec(context.Background(), sql, args...)
 	if err != nil {
-		log.Error("Database", "Error in statement '%s': %v", sql, err)
+		log.Error("DatabaseName", "Error in statement '%s': %v", sql, err)
 	}
 	return err
 }
@@ -235,7 +295,7 @@ func SmallIntIsNull(int *int16, null int16) pgtype.Int2 {
 func Begin(connection Connection) (pgx.Tx, error) {
 	transaction, err := connection.Begin(context.Background())
 	if err != nil {
-		log.Error("Database", "Error starting transaction: %v", err)
+		log.Error("DatabaseName", "Error starting transaction: %v", err)
 		return transaction, err
 	}
 	return transaction, nil
@@ -249,7 +309,7 @@ func Query[T any](connection Connection, sql string, results chan T, args ...int
 	defer close(results)
 	rows, err := connection.Query(context.Background(), sql, args...)
 	if err != nil {
-		log.Error("Database", "Error in query statement '%s': %v", sql, err)
+		log.Error("DatabaseName", "Error in query statement '%s': %v", sql, err)
 		return err
 	} else {
 		defer rows.Close()
@@ -257,7 +317,7 @@ func Query[T any](connection Connection, sql string, results chan T, args ...int
 			var result T
 			err := rows.Scan(interfaces(&result)...)
 			if err != nil {
-				log.Error("Database", "Error scanning result '%s': %v", sql, err)
+				log.Error("DatabaseName", "Error scanning result '%s': %v", sql, err)
 				return err
 			}
 			results <- result
