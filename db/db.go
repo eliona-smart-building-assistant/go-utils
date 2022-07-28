@@ -84,7 +84,7 @@ func Password() string {
 // DatabaseName returns the defined database name configured in CONNECTION_STRING
 func DatabaseName() string {
 	connectionStringUrl := connectionStringUrl()
-	if connectionStringUrl != nil {
+	if connectionStringUrl != nil && len(connectionStringUrl.Path) > 1 {
 		return connectionStringUrl.Path[1:]
 	}
 	return common.Getenv("PGDATABASE", "")

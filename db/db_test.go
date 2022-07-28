@@ -34,13 +34,22 @@ type Weather struct {
 	DayOfWeek   *int
 }
 
-func TestConnectionStringCo(t *testing.T) {
+func TestConnectionString(t *testing.T) {
 	t.Setenv("CONNECTION_STRING", "postgres://user:secret@localhost:5432/database")
 	assert.Equal(t, "localhost", Hostname())
 	assert.Equal(t, "user", Username())
 	assert.Equal(t, "secret", Password())
 	assert.Equal(t, 5432, Port())
 	assert.Equal(t, "database", DatabaseName())
+}
+
+func TestEmptyConnectionString(t *testing.T) {
+	t.Setenv("CONNECTION_STRING", "")
+	assert.Equal(t, "", Hostname())
+	assert.Equal(t, "", Username())
+	assert.Equal(t, "", Password())
+	assert.Equal(t, 0, Port())
+	assert.Equal(t, "", DatabaseName())
 }
 
 func TestPointer(t *testing.T) {
