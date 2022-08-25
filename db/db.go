@@ -138,7 +138,12 @@ func ExecFile(connection Connection, path string) error {
 
 // NewConnection returns a new connection defined by CONNECTION_STRING environment variable.
 func NewConnection() *pgx.Conn {
-	connection, err := pgx.ConnectConfig(context.Background(), ConnectionConfig())
+	return NewConnectionWithContext(context.Background())
+}
+
+// NewConnectionWithContext returns a new connection defined by CONNECTION_STRING environment variable.
+func NewConnectionWithContext(ctx context.Context) *pgx.Conn {
+	connection, err := pgx.ConnectConfig(ctx, ConnectionConfig())
 	if err != nil {
 		log.Fatal("DatabaseName", "Unable to create connection to database: %v", err)
 	}
@@ -181,15 +186,25 @@ func ClosePool() {
 
 // Listen waits for notifications on database channel and writes the payload to the go channel.
 // The type of the go channel have to correspond to the payload JSON structure
-func Listen[T any](connection *pgx.Conn, channel string, payloads chan T) {
-	contextWithCancel, cancel := context.WithCancel(context.Background())
-	defer cancel()
-	_, err := connection.Exec(contextWithCancel, "LISTEN "+channel)
+func Listen[T any](conn *pgx.Conn, channel string, payloads chan T) {
+	ListenWithContext(context.Background(), conn, channel, payloads)
+}
+
+// ListenWithContext waits for notifications on database channel and writes the payload to the go channel.
+// The type of the go channel have to correspond to the payload JSON structure
+func ListenWithContext[T any](ctx context.Context, conn *pgx.Conn, channel string, payloads chan T) {
+	_, err := conn.Exec(ctx, "listen "+channel)
 	if err != nil {
 		log.Error("DatabaseName", "Error listening on channel '%s': %v", channel, err)
+		return
 	}
 	for {
-		notification, _ := waitForNotification(contextWithCancel, connection)
+		notification, err := waitForNotification(ctx, conn)
+		if err != nil {
+			log.Error("DatabaseName", "Error during listening for notifications: %v", err)
+			close(payloads)
+			return
+		}
 		if notification != nil {
 			var payload T
 			err := json.Unmarshal([]byte(notification.Payload), &payload)
@@ -202,21 +217,17 @@ func Listen[T any](connection *pgx.Conn, channel string, payloads chan T) {
 }
 
 // waitForNotification waits for channel notification of the given connection
-func waitForNotification(origCtx context.Context, connection *pgx.Conn) (*pgconn.Notification, error) {
-	ctx, cancel := context.WithTimeout(origCtx, 5*time.Second)
+func waitForNotification(ctx context.Context, conn *pgx.Conn) (*pgconn.Notification, error) {
+	timeoutCtx, cancel := context.WithTimeout(ctx, 10*time.Second)
 	defer cancel()
-	notification, err := connection.WaitForNotification(ctx)
-	if err == nil {
-		return notification, nil
-	} else if pgconn.Timeout(err) {
-		ctx, cancel = context.WithTimeout(origCtx, 1*time.Second)
-		defer cancel()
-		err = connection.Ping(ctx)
+	for {
+		notification, err := conn.WaitForNotification(timeoutCtx)
+		if err == nil {
+			return notification, nil
+		} else if !pgconn.Timeout(err) {
+			return nil, err
+		}
 	}
-	if err != nil {
-		log.Error("DatabaseName", "Error waiting for notification: %v", err)
-	}
-	return nil, err
 }
 
 // Exec inserts a row using the given sql with arguments
