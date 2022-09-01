@@ -26,6 +26,7 @@ import (
 	"github.com/jackc/pgtype"
 	"github.com/jackc/pgx/v4"
 	"github.com/jackc/pgx/v4/pgxpool"
+	_ "github.com/volatiletech/sqlboiler/v4/drivers/sqlboiler-psql/driver"
 	"io/ioutil"
 	"net/url"
 	"path/filepath"
