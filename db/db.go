@@ -17,6 +17,7 @@ package db
 
 import (
 	"context"
+	"database/sql"
 	"encoding/json"
 	"fmt"
 	"github.com/eliona-smart-building-assistant/go-utils/common"
@@ -109,7 +110,7 @@ type Connection interface {
 func ConnectionConfig() *pgx.ConnConfig {
 	config, err := pgx.ParseConfig(ConnectionString())
 	if err != nil {
-		log.Fatal("DatabaseName", "Unable to parse database URL: %v", err)
+		log.Fatal("Database", "Unable to parse database URL: %v", err)
 	}
 	return config
 }
@@ -117,7 +118,7 @@ func ConnectionConfig() *pgx.ConnConfig {
 func PoolConfig() *pgxpool.Config {
 	config, err := pgxpool.ParseConfig(ConnectionString())
 	if err != nil {
-		log.Fatal("DatabaseName", "Unable to parse database URL: %v", err)
+		log.Fatal("Database", "Unable to parse database URL: %v", err)
 	}
 	return config
 }
@@ -125,12 +126,12 @@ func PoolConfig() *pgxpool.Config {
 func ExecFile(connection Connection, path string) error {
 	sql, err := ioutil.ReadFile(filepath.Join(path))
 	if err != nil {
-		log.Error("DatabaseName", "Unable to read sql file %s: %v", path, err)
+		log.Error("Database", "Unable to read sql file %s: %v", path, err)
 		return err
 	}
 	_, err = connection.Exec(context.Background(), string(sql))
 	if err != nil {
-		log.Error("DatabaseName", "Error during execute sql file %s: %v", path, err)
+		log.Error("Database", "Error during execute sql file %s: %v", path, err)
 		return err
 	}
 	return nil
@@ -145,18 +146,18 @@ func NewConnection() *pgx.Conn {
 func NewConnectionWithContext(ctx context.Context) *pgx.Conn {
 	connection, err := pgx.ConnectConfig(ctx, ConnectionConfig())
 	if err != nil {
-		log.Fatal("DatabaseName", "Unable to create connection to database: %v", err)
+		log.Fatal("Database", "Unable to create connection to database: %v", err)
 	}
-	log.Debug("DatabaseName", "Connection created")
+	log.Debug("Database", "Connection created")
 	return connection
 }
 
 func NewPool() *pgxpool.Pool {
 	pool, err := pgxpool.ConnectConfig(context.Background(), PoolConfig())
 	if err != nil {
-		log.Fatal("DatabaseName", "Unable to create pool for database: %v", err)
+		log.Fatal("Database", "Unable to create pool for database: %v", err)
 	}
-	log.Debug("DatabaseName", "Pool created")
+	log.Debug("Database", "Pool created")
 	return pool
 }
 
@@ -181,6 +182,41 @@ func Pool() *pgxpool.Pool {
 func ClosePool() {
 	if pool != nil {
 		pool.Close()
+		pool = nil
+	}
+}
+
+// current holds a single connection
+var databaseMutex sync.Mutex
+var database *sql.DB
+
+// Database returns the configured database connection from CONNECTION_STRING. If once opened this method returns always the same database.
+func Database() *sql.DB {
+	if database == nil {
+		databaseMutex.Lock()
+		if database == nil {
+			database = NewDatabase()
+		}
+		databaseMutex.Unlock()
+	}
+	return database
+}
+
+// NewDatabase returns always a new database connection from CONNECTION_STRING.
+func NewDatabase() *sql.DB {
+	database, err := sql.Open("postgres", fmt.Sprintf("host='%s' port='%d' user='%s' password='%s' dbname='%s' sslmode=disable", Hostname(), Port(), Username(), Password(), DatabaseName()))
+	if err != nil {
+		log.Fatal("API v2", "Cannot connect to database: %v", err)
+	}
+	log.Debug("Database", "Database created")
+	return database
+}
+
+// CloseDatabase closes the default database hold by this package.
+func CloseDatabase() {
+	if database != nil {
+		_ = database.Close()
+		database = nil
 	}
 }
 
@@ -195,13 +231,13 @@ func Listen[T any](conn *pgx.Conn, channel string, payloads chan T) {
 func ListenWithContext[T any](ctx context.Context, conn *pgx.Conn, channel string, payloads chan T) {
 	_, err := conn.Exec(ctx, "listen "+channel)
 	if err != nil {
-		log.Error("DatabaseName", "Error listening on channel '%s': %v", channel, err)
+		log.Error("Database", "Error listening on channel '%s': %v", channel, err)
 		return
 	}
 	for {
 		notification, err := waitForNotification(ctx, conn)
 		if err != nil {
-			log.Error("DatabaseName", "Error during listening for notifications: %v", err)
+			log.Error("Database", "Error during listening for notifications: %v", err)
 			close(payloads)
 			return
 		}
@@ -209,7 +245,7 @@ func ListenWithContext[T any](ctx context.Context, conn *pgx.Conn, channel strin
 			var payload T
 			err := json.Unmarshal([]byte(notification.Payload), &payload)
 			if err != nil {
-				log.Error("DatabaseName", "Unmarshal error during listening: %v", err)
+				log.Error("Database", "Unmarshal error during listening: %v", err)
 			}
 			payloads <- payload
 		}
@@ -234,7 +270,7 @@ func waitForNotification(ctx context.Context, conn *pgx.Conn) (*pgconn.Notificat
 func Exec(connection Connection, sql string, args ...interface{}) error {
 	_, err := connection.Exec(context.Background(), sql, args...)
 	if err != nil {
-		log.Error("DatabaseName", "Error in statement '%s': %v", sql, err)
+		log.Error("Database", "Error in statement '%s': %v", sql, err)
 	}
 	return err
 }
@@ -306,7 +342,7 @@ func SmallIntIsNull(int *int16, null int16) pgtype.Int2 {
 func Begin(connection Connection) (pgx.Tx, error) {
 	transaction, err := connection.Begin(context.Background())
 	if err != nil {
-		log.Error("DatabaseName", "Error starting transaction: %v", err)
+		log.Error("Database", "Error starting transaction: %v", err)
 		return transaction, err
 	}
 	return transaction, nil
@@ -320,7 +356,7 @@ func Query[T any](connection Connection, sql string, results chan T, args ...int
 	defer close(results)
 	rows, err := connection.Query(context.Background(), sql, args...)
 	if err != nil {
-		log.Error("DatabaseName", "Error in query statement '%s': %v", sql, err)
+		log.Error("Database", "Error in query statement '%s': %v", sql, err)
 		return err
 	} else {
 		defer rows.Close()
@@ -328,7 +364,7 @@ func Query[T any](connection Connection, sql string, results chan T, args ...int
 			var result T
 			err := rows.Scan(interfaces(&result)...)
 			if err != nil {
-				log.Error("DatabaseName", "Error scanning result '%s': %v", sql, err)
+				log.Error("Database", "Error scanning result '%s': %v", sql, err)
 				return err
 			}
 			results <- result
