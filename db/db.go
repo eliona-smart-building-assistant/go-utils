@@ -255,15 +255,14 @@ func ListenWithContext[T any](ctx context.Context, conn *pgx.Conn, channel strin
 
 // waitForNotification waits for channel notification of the given connection
 func waitForNotification(ctx context.Context, conn *pgx.Conn) (*pgconn.Notification, error) {
-	timeoutCtx, cancel := context.WithTimeout(ctx, 10*time.Second)
+	timeoutCtx, cancel := context.WithTimeout(ctx, 60*time.Second)
 	defer cancel()
 	for {
 		notification, err := conn.WaitForNotification(timeoutCtx)
-		if err == nil {
+		if err == nil || pgconn.Timeout(err) {
 			return notification, nil
-		} else if !pgconn.Timeout(err) {
-			return nil, err
 		}
+		return nil, err
 	}
 }
 
