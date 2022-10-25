@@ -192,11 +192,11 @@ var databaseMutex sync.Mutex
 var database *sql.DB
 
 // Database returns the configured database connection from CONNECTION_STRING. If once opened this method returns always the same database.
-func Database() *sql.DB {
+func Database(applicationName string) *sql.DB {
 	if database == nil {
 		databaseMutex.Lock()
 		if database == nil {
-			database = NewDatabase()
+			database = NewDatabase(applicationName)
 		}
 		databaseMutex.Unlock()
 	}
@@ -204,10 +204,10 @@ func Database() *sql.DB {
 }
 
 // NewDatabase returns always a new database connection from CONNECTION_STRING.
-func NewDatabase() *sql.DB {
-	database, err := sql.Open("postgres", fmt.Sprintf("host='%s' port='%d' user='%s' password='%s' dbname='%s' sslmode=disable", Hostname(), Port(), Username(), Password(), DatabaseName()))
+func NewDatabase(applicationName string) *sql.DB {
+	database, err := sql.Open("postgres", fmt.Sprintf("host='%s' port='%d' user='%s' password='%s' dbname='%s' sslmode=disable application_name='%s'", Hostname(), Port(), Username(), Password(), DatabaseName(), applicationName))
 	if err != nil {
-		log.Fatal("API v2", "Cannot connect to database: %v", err)
+		log.Fatal("Database", "Cannot connect to database: %v", err)
 	}
 	log.Debug("Database", "Database created")
 	return database
