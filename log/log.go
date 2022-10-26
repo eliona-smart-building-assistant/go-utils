@@ -16,6 +16,7 @@
 package log
 
 import (
+	"bytes"
 	"fmt"
 	"github.com/eliona-smart-building-assistant/go-utils/common"
 	"io"
@@ -99,12 +100,47 @@ type Logger struct {
 	lev      Level      // level for logging
 }
 
+// A logWriter implements the io.Writer interface and logs all data send to the writer line by line.
+// The logWriter contains a Logger inside to log the data. Each logger needs a level and a tag used for logging.
+type logWriter struct {
+	log *Logger
+	lev Level
+	buf bytes.Buffer
+	tag string
+}
+
+func (lw *logWriter) Write(p []byte) (n int, err error) {
+	var count int
+	lines := bytes.Split(p, []byte("\n"))
+	for idx, line := range lines {
+		lw.buf.Write(line)
+		if lw.buf.Len() > 0 && idx < (len(lines)-1) {
+			err := lw.log.Output(lw.lev, lw.tag, lw.buf.String())
+			if err != nil {
+				return 0, err
+			}
+			count += lw.buf.Len()
+			lw.buf.Reset()
+		}
+	}
+	return count, nil
+}
+
 // New creates a new Logger. The out variable sets the
 // destination to which log data will be written. The log level is taken
 // from LOG_LEVEL environment variable.
 func New(out io.Writer) *Logger {
 	var level = parseLevel(common.Getenv("LOG_LEVEL", "info"))
 	return &Logger{out: out, lev: level}
+}
+
+// GetWriter returns an io.Writer implementation which log all data to the standard logger with log level and tag
+func (l *Logger) GetWriter(level Level, tag string) io.Writer {
+	return &logWriter{
+		log: l,
+		tag: tag,
+		lev: level,
+	}
 }
 
 func (l *Logger) level() Level {
@@ -350,6 +386,11 @@ func Output(level Level, prefix string, s string) error {
 // the app name is taken. Other arguments are handled in the manner of fmt.Printf.
 func Error(prefix, format string, v ...interface{}) {
 	std.Error(prefix, format, v...)
+}
+
+// GetWriter returns an io.Writer implementation which log all data to the standard logger with log level and tag
+func GetWriter(level Level, tag string) io.Writer {
+	return std.GetWriter(level, tag)
 }
 
 // Warn calls Printf to print to the standard logger with the warning level. As prefix

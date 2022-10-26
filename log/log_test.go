@@ -40,6 +40,40 @@ func TestLogger_SetLevelRace(t *testing.T) {
 	}
 }
 
+func TestLoggerWriter(t *testing.T) {
+	var b bytes.Buffer
+	l := New(&b)
+	l.SetLevel(DebugLevel)
+	w := l.GetWriter(DebugLevel, "test")
+
+	_, _ = w.Write([]byte("Das"))
+	assert.Equal(t, "", b.String())
+	_, _ = w.Write([]byte("ist"))
+	assert.Equal(t, "", b.String())
+	_, _ = w.Write([]byte("ein"))
+	assert.Equal(t, "", b.String())
+	_, _ = w.Write([]byte("Test"))
+	assert.Equal(t, "", b.String())
+	_, _ = w.Write([]byte("\n"))
+	_, _ = w.Write([]byte("\n"))
+	_, _ = w.Write([]byte("\n"))
+	assert.Contains(t, b.String(), "DEBUG\t", b.String())
+	assert.Contains(t, b.String(), "\ttest\tDasisteinTest\n", b.String())
+	b.Reset()
+
+	_, _ = w.Write([]byte("Das ist ein"))
+	assert.Equal(t, "", b.String())
+	_, _ = w.Write([]byte(" Test\n"))
+	assert.Contains(t, b.String(), "DEBUG\t", b.String())
+	assert.Contains(t, b.String(), "\ttest\tDas ist ein Test\n", b.String())
+	b.Reset()
+
+	_, _ = w.Write([]byte("Das ist ein Test\n"))
+	assert.Contains(t, b.String(), "DEBUG\t", b.String())
+	assert.Contains(t, b.String(), "\ttest\tDas ist ein Test\n")
+	b.Reset()
+}
+
 func TestSetLevel(t *testing.T) {
 	var b bytes.Buffer
 	l := New(&b)
