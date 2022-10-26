@@ -179,9 +179,9 @@ func itoa(buf *[]byte, i int, wid int) {
 // formatHeader writes log header to buf in following order:
 //   * level
 //   * date and time,
-//   * prefix.
+//   * tag.
 // The values are separated with tab
-func (l *Logger) formatHeader(buf *[]byte, t time.Time, level Level, prefix string) {
+func (l *Logger) formatHeader(buf *[]byte, t time.Time, level Level, tag string) {
 
 	*buf = append(*buf, level.String()...)
 	*buf = append(*buf, '\t')
@@ -205,15 +205,15 @@ func (l *Logger) formatHeader(buf *[]byte, t time.Time, level Level, prefix stri
 	itoa(buf, t.Nanosecond()/1e3, 6)
 	*buf = append(*buf, '\t')
 
-	*buf = append(*buf, prefix...)
+	*buf = append(*buf, strings.ToUpper(tag)...)
 	*buf = append(*buf, '\t')
 }
 
 // Output writes the output for a logging event. The string s contains
-// the text to print after the prefix specified by the flags of the
+// the text to print after the tag specified by the flags of the
 // Logger. A newline is appended if the last character of s is not
 // already a newline. Output won't write more bytes than bufLimit (if it's set)
-func (l *Logger) Output(level Level, prefix, s string) error {
+func (l *Logger) Output(level Level, tag, s string) error {
 	if !l.IsLevelEnabled(level) {
 		return nil
 	}
@@ -221,7 +221,7 @@ func (l *Logger) Output(level Level, prefix, s string) error {
 	l.mu.Lock()
 	defer l.mu.Unlock()
 	l.buf = l.buf[:0]
-	l.formatHeader(&l.buf, now, level, prefix)
+	l.formatHeader(&l.buf, now, level, tag)
 	l.buf = append(l.buf, s...)
 	// if limit is set truncate buf
 	if l.bufLimit > 0 && int64(len(l.buf)) >= l.bufLimit {
@@ -237,25 +237,25 @@ func (l *Logger) Output(level Level, prefix, s string) error {
 
 // Printf calls l.Output to print to the logger.
 // Arguments are handled in the manner of fmt.Printf.
-func (l *Logger) Printf(level Level, prefix, format string, v ...interface{}) {
+func (l *Logger) Printf(level Level, tag, format string, v ...interface{}) {
 	if l.IsLevelEnabled(level) {
-		l.Output(level, prefix, fmt.Sprintf(format, v...))
+		l.Output(level, tag, fmt.Sprintf(format, v...))
 	}
 }
 
 // Print calls l.Output to print to the logger.
 // Arguments are handled in the manner of fmt.Print.
-func (l *Logger) Print(level Level, prefix string, v ...interface{}) {
+func (l *Logger) Print(level Level, tag string, v ...interface{}) {
 	if l.IsLevelEnabled(level) {
-		l.Output(level, prefix, fmt.Sprint(v...))
+		l.Output(level, tag, fmt.Sprint(v...))
 	}
 }
 
 // Println calls l.Output to print to the logger.
 // Arguments are handled in the manner of fmt.Println.
-func (l *Logger) Println(level Level, prefix string, v ...interface{}) {
+func (l *Logger) Println(level Level, tag string, v ...interface{}) {
 	if l.IsLevelEnabled(level) {
-		l.Output(level, prefix, fmt.Sprintln(v...))
+		l.Output(level, tag, fmt.Sprintln(v...))
 	}
 }
 
@@ -292,35 +292,35 @@ func (l *Logger) Writer() io.Writer {
 	return l.out
 }
 
-// Error calls Printf to print to the standard logger with the error level. As prefix
+// Error calls Printf to print to the standard logger with the error level. As tag
 // the app name is taken. Other arguments are handled in the manner of fmt.Printf.
-func (l *Logger) Error(prefix, format string, v ...interface{}) {
-	l.Printf(ErrorLevel, prefix, format, v...)
+func (l *Logger) Error(tag, format string, v ...interface{}) {
+	l.Printf(ErrorLevel, tag, format, v...)
 }
 
-// Warn calls Printf to print to the standard logger with the warning level. As prefix
+// Warn calls Printf to print to the standard logger with the warning level. As tag
 // the app name is taken. Other arguments are handled in the manner of fmt.Printf.
-func (l *Logger) Warn(prefix, format string, v ...interface{}) {
-	l.Printf(WarnLevel, prefix, format, v...)
+func (l *Logger) Warn(tag, format string, v ...interface{}) {
+	l.Printf(WarnLevel, tag, format, v...)
 }
 
-// Info calls Printf to print to the standard logger with the info level. As prefix
+// Info calls Printf to print to the standard logger with the info level. As tag
 // the app name is taken. Other arguments are handled in the manner of fmt.Printf.
-func (l *Logger) Info(prefix, format string, v ...interface{}) {
-	l.Printf(InfoLevel, prefix, format, v...)
+func (l *Logger) Info(tag, format string, v ...interface{}) {
+	l.Printf(InfoLevel, tag, format, v...)
 }
 
-// Debug calls Printf to print to the standard logger with the debug level. As prefix
+// Debug calls Printf to print to the standard logger with the debug level. As tag
 // the app name is taken. Other arguments are handled in the manner of fmt.Printf.
-func (l *Logger) Debug(prefix, format string, v ...interface{}) {
-	l.Printf(DebugLevel, prefix, format, v...)
+func (l *Logger) Debug(tag, format string, v ...interface{}) {
+	l.Printf(DebugLevel, tag, format, v...)
 }
 
-// Fatal calls Printf to print to the standard logger with the debug level. As prefix
+// Fatal calls Printf to print to the standard logger with the debug level. As tag
 // the app name is taken. Other arguments are handled in the manner of fmt.Printf.
 // After logging aborting with exit status 1
-func (l *Logger) Fatal(prefix, format string, v ...interface{}) {
-	l.Printf(FatalLevel, prefix, format, v...)
+func (l *Logger) Fatal(tag, format string, v ...interface{}) {
+	l.Printf(FatalLevel, tag, format, v...)
 	os.Exit(1)
 }
 
@@ -358,34 +358,34 @@ func Writer() io.Writer {
 
 // Print calls Output to print to the standard logger.
 // Arguments are handled in the manner of fmt.Print.
-func Print(level Level, prefix string, v ...interface{}) {
-	std.Print(level, prefix, v...)
+func Print(level Level, tag string, v ...interface{}) {
+	std.Print(level, tag, v...)
 }
 
 // Printf calls Output to print to the standard logger.
 // Arguments are handled in the manner of fmt.Printf.
-func Printf(level Level, prefix, format string, v ...interface{}) {
-	std.Printf(level, prefix, format, v...)
+func Printf(level Level, tag, format string, v ...interface{}) {
+	std.Printf(level, tag, format, v...)
 }
 
 // Println calls Output to print to the standard logger.
 // Arguments are handled in the manner of fmt.Println.
-func Println(level Level, prefix string, v ...interface{}) {
-	std.Println(level, prefix, v...)
+func Println(level Level, tag string, v ...interface{}) {
+	std.Println(level, tag, v...)
 }
 
 // Output writes the output for a logging event. The string s contains
-// the text to print after the prefix specified by the flags of the
+// the text to print after the tag specified by the flags of the
 // Logger. A newline is appended if the last character of s is not
 // already a newline.
-func Output(level Level, prefix string, s string) error {
-	return std.Output(level, prefix, s)
+func Output(level Level, tag string, s string) error {
+	return std.Output(level, tag, s)
 }
 
-// Error calls Printf to print to the standard logger with the error level. As prefix
+// Error calls Printf to print to the standard logger with the error level. As tag
 // the app name is taken. Other arguments are handled in the manner of fmt.Printf.
-func Error(prefix, format string, v ...interface{}) {
-	std.Error(prefix, format, v...)
+func Error(tag, format string, v ...interface{}) {
+	std.Error(tag, format, v...)
 }
 
 // GetWriter returns an io.Writer implementation which log all data to the standard logger with log level and tag
@@ -393,27 +393,27 @@ func GetWriter(level Level, tag string) io.Writer {
 	return std.GetWriter(level, tag)
 }
 
-// Warn calls Printf to print to the standard logger with the warning level. As prefix
+// Warn calls Printf to print to the standard logger with the warning level. As tag
 // the app name is taken. Other arguments are handled in the manner of fmt.Printf.
-func Warn(prefix, format string, v ...interface{}) {
-	std.Warn(prefix, format, v...)
+func Warn(tag, format string, v ...interface{}) {
+	std.Warn(tag, format, v...)
 }
 
-// Info calls Printf to print to the standard logger with the info level. As prefix
+// Info calls Printf to print to the standard logger with the info level. As tag
 // the app name is taken. Other arguments are handled in the manner of fmt.Printf.
-func Info(prefix, format string, v ...interface{}) {
-	std.Info(prefix, format, v...)
+func Info(tag, format string, v ...interface{}) {
+	std.Info(tag, format, v...)
 }
 
-// Debug calls Printf to print to the standard logger with the debug level. As prefix
+// Debug calls Printf to print to the standard logger with the debug level. As tag
 // the app name is taken. Other arguments are handled in the manner of fmt.Printf.
-func Debug(prefix, format string, v ...interface{}) {
-	std.Debug(prefix, format, v...)
+func Debug(tag, format string, v ...interface{}) {
+	std.Debug(tag, format, v...)
 }
 
-// Fatal calls Printf to print to the standard logger with the debug level. As prefix
+// Fatal calls Printf to print to the standard logger with the debug level. As tag
 // the app name is taken. Other arguments are handled in the manner of fmt.Printf.
 // After logging aborting with exit status 1
-func Fatal(prefix, format string, v ...interface{}) {
-	std.Fatal(prefix, format, v...)
+func Fatal(tag, format string, v ...interface{}) {
+	std.Fatal(tag, format, v...)
 }
