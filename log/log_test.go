@@ -40,6 +40,40 @@ func TestLogger_SetLevelRace(t *testing.T) {
 	}
 }
 
+func TestLoggerWriter(t *testing.T) {
+	var b bytes.Buffer
+	l := New(&b)
+	l.SetLevel(DebugLevel)
+	w := l.GetWriter(DebugLevel, "test")
+
+	_, _ = w.Write([]byte("Das"))
+	assert.Equal(t, "", b.String())
+	_, _ = w.Write([]byte("ist"))
+	assert.Equal(t, "", b.String())
+	_, _ = w.Write([]byte("ein"))
+	assert.Equal(t, "", b.String())
+	_, _ = w.Write([]byte("Test"))
+	assert.Equal(t, "", b.String())
+	_, _ = w.Write([]byte("\n"))
+	_, _ = w.Write([]byte("\n"))
+	_, _ = w.Write([]byte("\n"))
+	assert.Contains(t, b.String(), "DEBUG\t", b.String())
+	assert.Contains(t, b.String(), "\tTEST\tDasisteinTest\n", b.String())
+	b.Reset()
+
+	_, _ = w.Write([]byte("Das ist ein"))
+	assert.Equal(t, "", b.String())
+	_, _ = w.Write([]byte(" Test\n"))
+	assert.Contains(t, b.String(), "DEBUG\t", b.String())
+	assert.Contains(t, b.String(), "\tTEST\tDas ist ein Test\n", b.String())
+	b.Reset()
+
+	_, _ = w.Write([]byte("Das ist ein Test\n"))
+	assert.Contains(t, b.String(), "DEBUG\t", b.String())
+	assert.Contains(t, b.String(), "\tTEST\tDas ist ein Test\n")
+	b.Reset()
+}
+
 func TestSetLevel(t *testing.T) {
 	var b bytes.Buffer
 	l := New(&b)
@@ -64,7 +98,7 @@ func TestHandyMethods(t *testing.T) {
 	l.SetLevel(DebugLevel)
 	l.Info("foobar", "foo %s", "bar")
 	assert.Contains(t, b.String(), "INFO")
-	assert.Contains(t, b.String(), "\tfoobar\tfoo bar\n")
+	assert.Contains(t, b.String(), "\tFOOBAR\tfoo bar\n")
 }
 
 func TestLevelSettingViaEnvironment(t *testing.T) {
@@ -126,7 +160,7 @@ func TestEmptyPrintCreatesLine(t *testing.T) {
 	l.Print(DebugLevel, "Header", "")
 	l.Println(DebugLevel, "Header", "non-empty")
 	output := b.String()
-	if n := strings.Count(output, "Header"); n != 2 {
+	if n := strings.Count(output, "HEADER"); n != 2 {
 		t.Errorf("expected 2 headers, got %d", n)
 	}
 	if n := strings.Count(output, "\n"); n != 2 {

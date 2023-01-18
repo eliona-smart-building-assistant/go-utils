@@ -56,6 +56,49 @@ func WaitFor(functions ...func()) {
 	waitGroup.Wait()
 }
 
+// WaitForWithOs helps to start multiple functions in parallel and waits until all functions are completed or if system signals termination
+func WaitForWithOs(functions ...func()) {
+
+	// channel to get os signals
+	osSignal := make(chan os.Signal, 1)
+	defer close(osSignal)
+	signal.Notify(osSignal, syscall.SIGINT, syscall.SIGTERM)
+
+	// wait group to wait for worker functions
+	var waitGroup = &sync.WaitGroup{}
+	waitGroup.Add(len(functions))
+
+	// start all functions
+	for _, function := range functions {
+
+		go func(f func(), wg *sync.WaitGroup, sig chan os.Signal) {
+
+			// channel for function
+			defer wg.Done()
+			functionEnds := make(chan any)
+
+			// start function
+			go func(f func(), fe chan any) {
+				f()
+				fe <- nil
+			}(f, functionEnds)
+
+			// wait until function ends or od signals
+			select {
+			case <-functionEnds:
+				return
+			case <-sig:
+				return
+			}
+
+		}(function, waitGroup, osSignal)
+
+	}
+
+	// wait until all functions ends or terminated by os
+	waitGroup.Wait()
+}
+
 // Loop wraps a function in an endless loop and calls the function in the defined interval.
 func Loop(function func(), interval time.Duration) func() {
 	return func() {

@@ -1,6 +1,6 @@
-# go-utils #
+# Go Utils #
 
-go-utils is a Go library to make it easier to work with the Go language
+Go utils is a part of the Eliona App SDK. It provides a Go library to make it easier to work with the Go language.
 
 The library contains handy functions to access database resources, Kafka topics and HTTP endpoints.
 Besides, the library offers useful tools like logging and process control.
