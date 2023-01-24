@@ -33,7 +33,6 @@ import (
 	"reflect"
 	"strconv"
 	"sync"
-	"time"
 )
 
 // ConnectionString returns the connection string defined in the environment variable CONNECTION_STRING.
@@ -221,25 +220,24 @@ func CloseDatabase() {
 	}
 }
 
-// Listen waits for notifications on database channel and writes the payload to the go channel.
-// The type of the go channel have to correspond to the payload JSON structure
-func Listen[T any](conn *pgx.Conn, channel string, payloads chan T) {
-	ListenWithContext(context.Background(), conn, channel, payloads)
-}
-
 // ListenWithContext waits for notifications on database channel and writes the payload to the go channel.
 // The type of the go channel have to correspond to the payload JSON structure
-func ListenWithContext[T any](ctx context.Context, conn *pgx.Conn, channel string, payloads chan T) {
+func ListenWithContext[T any](ctx context.Context, conn *pgx.Conn, channel string, payloads chan T, errors chan error) {
 	_, err := conn.Exec(ctx, "listen "+channel)
 	if err != nil {
 		log.Error("Database", "Error listening on channel '%s': %v", channel, err)
-		return
+		errors <- err
 	}
+
+	// Wait for notifications
 	for {
-		notification, err := waitForNotification(ctx, conn)
+		notification, err := conn.WaitForNotification(ctx)
+		if pgconn.Timeout(err) {
+			errors <- nil
+		}
 		if err != nil {
 			log.Error("Database", "Error during listening for notifications: %v", err)
-			close(payloads)
+			errors <- err
 			return
 		}
 		if notification != nil {
@@ -247,22 +245,10 @@ func ListenWithContext[T any](ctx context.Context, conn *pgx.Conn, channel strin
 			err := json.Unmarshal([]byte(notification.Payload), &payload)
 			if err != nil {
 				log.Error("Database", "Unmarshal error during listening: %v", err)
+				errors <- err
 			}
 			payloads <- payload
 		}
-	}
-}
-
-// waitForNotification waits for channel notification of the given connection
-func waitForNotification(ctx context.Context, conn *pgx.Conn) (*pgconn.Notification, error) {
-	timeoutCtx, cancel := context.WithTimeout(ctx, 60*time.Second)
-	defer cancel()
-	for {
-		notification, err := conn.WaitForNotification(timeoutCtx)
-		if err == nil || pgconn.Timeout(err) {
-			return notification, nil
-		}
-		return nil, err
 	}
 }
 
