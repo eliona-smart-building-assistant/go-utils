@@ -220,6 +220,12 @@ func CloseDatabase() {
 	}
 }
 
+// Listen waits for notifications on database channel and writes the payload to the go channel.
+// The type of the go channel have to correspond to the payload JSON structure
+func Listen[T any](conn *pgx.Conn, channel string, payloads chan T, errors chan error) {
+	ListenWithContext(context.Background(), conn, channel, payloads, errors)
+}
+
 // ListenWithContext waits for notifications on database channel and writes the payload to the go channel.
 // The type of the go channel have to correspond to the payload JSON structure
 func ListenWithContext[T any](ctx context.Context, conn *pgx.Conn, channel string, payloads chan T, errors chan error) {
