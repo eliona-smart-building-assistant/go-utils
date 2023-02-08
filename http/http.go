@@ -17,6 +17,7 @@ package http
 
 import (
 	"bytes"
+	"context"
 	"crypto/tls"
 	"encoding/json"
 	"fmt"
@@ -24,6 +25,9 @@ import (
 	"io"
 	"io/ioutil"
 	"net/http"
+	"os"
+	"os/signal"
+	"syscall"
 	"time"
 )
 
@@ -178,4 +182,37 @@ func Do(request *http.Request, timeout time.Duration, checkCertificate bool) ([]
 		log.Error("Http", "Error request code %d for request to %s.", response.StatusCode, request.URL)
 		return nil, fmt.Errorf("error request code %d for request to %s", response.StatusCode, request.URL)
 	}
+}
+
+// ListenApiWithOs starts an API server and listen for API requests
+func ListenApiWithOs(server *http.Server) {
+
+	// channel to get os signals
+	osSignal := make(chan os.Signal, 1)
+	defer close(osSignal)
+	signal.Notify(osSignal, syscall.SIGINT, syscall.SIGTERM)
+
+	//  start server
+	closeChan := make(chan bool)
+	go func() {
+		err := server.ListenAndServe()
+		closeChan <- true
+		if err != nil {
+			log.Fatal("main", "Error in API Server: %v", err)
+		}
+	}()
+
+	// wait for server close or os signals
+	select {
+	case <-closeChan:
+		return
+	case <-osSignal:
+		err := server.Shutdown(context.Background())
+		if err != nil {
+			log.Error("api", "Error in API Server: %v", err)
+			return
+		}
+		return
+	}
+
 }

@@ -60,9 +60,9 @@ func WaitFor(functions ...func()) {
 func WaitForWithOs(functions ...func()) {
 
 	// channel to get os signals
-	osSignal := make(chan os.Signal, 1)
-	defer close(osSignal)
-	signal.Notify(osSignal, syscall.SIGINT, syscall.SIGTERM)
+	osSignals := make(chan os.Signal, 1)
+	defer close(osSignals)
+	signal.Notify(osSignals, syscall.SIGTERM, syscall.SIGQUIT, syscall.SIGINT)
 
 	// wait group to wait for worker functions
 	var waitGroup = &sync.WaitGroup{}
@@ -71,7 +71,7 @@ func WaitForWithOs(functions ...func()) {
 	// start all functions
 	for _, function := range functions {
 
-		go func(f func(), wg *sync.WaitGroup, sig chan os.Signal) {
+		go func(f func(), wg *sync.WaitGroup, signals chan os.Signal) {
 
 			// channel for function
 			defer wg.Done()
@@ -87,11 +87,11 @@ func WaitForWithOs(functions ...func()) {
 			select {
 			case <-functionEnds:
 				return
-			case <-sig:
+			case <-signals:
 				return
 			}
 
-		}(function, waitGroup, osSignal)
+		}(function, waitGroup, osSignals)
 
 	}
 
