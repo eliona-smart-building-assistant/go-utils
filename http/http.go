@@ -31,22 +31,45 @@ import (
 	"time"
 )
 
-// NewRequestWithBearer creates a new request for the given url. The url have is authenticated with a barrier token.
+// NewRequestWithBearer creates a new request for the given url. The url is authenticated with a barrier token.
 func NewRequestWithBearer(url string, token string) (*http.Request, error) {
 	return newRequestWithBearer(url, "GET", token)
 }
 
-// NewPostRequestWithBearer creates a new request for the given url. The url have is authenticated with a barrier token.
+// NewRequestWithApiKey creates a new request for the given url. The url is authenticated with a named api key.
+func NewRequestWithApiKey(url string, key string, value string) (*http.Request, error) {
+	return newRequestWithHeaderSecret(url, "GET", key, value)
+}
+
+// NewPostRequestWithBearer creates a new request for the given url. The url is authenticated with a barrier token.
 func NewPostRequestWithBearer(url string, body any, token string) (*http.Request, error) {
 	return newRequestWithBearerAndBody(url, body, "POST", token)
 }
 
-// NewPutRequestWithBearer creates a new request for the given url. The url have is authenticated with a barrier token.
+// NewPostRequestWithApiKey creates a new request for the given url. The url is authenticated with a named api key.
+func NewPostRequestWithApiKey(url string, body any, key string, value string) (*http.Request, error) {
+	return newRequestWithHeaderSecretAndBody(url, body, "POST", key, value)
+}
+
+// NewPutRequestWithBearer creates a new request for the given url. The url is authenticated with a barrier token.
 func NewPutRequestWithBearer(url string, body any, token string) (*http.Request, error) {
 	return newRequestWithBearerAndBody(url, body, "PUT", token)
 }
 
+// NewPutRequestWithApiKey creates a new request for the given url. The url is authenticated with a named api key.
+func NewPutRequestWithApiKey(url string, body any, key string, value string) (*http.Request, error) {
+	return newRequestWithHeaderSecretAndBody(url, body, "PUT", key, value)
+}
+
 func newRequestWithBearerAndBody(url string, body any, method string, token string) (*http.Request, error) {
+	return newRequestWithHeaderSecretAndBody(url, body, method, "Authorization", "Bearer "+token)
+}
+
+func newRequestWithBearer(url string, method string, token string) (*http.Request, error) {
+	return newRequestWithHeaderSecret(url, method, "Authorization", "Bearer "+token)
+}
+
+func newRequestWithHeaderSecretAndBody(url string, body any, method string, key string, value string) (*http.Request, error) {
 
 	// Create a new request
 	request, err := newRequestWithBody(url, body, method)
@@ -55,11 +78,11 @@ func newRequestWithBearerAndBody(url string, body any, method string, token stri
 		return nil, err
 	}
 
-	request.Header.Set("Authorization", "Bearer "+token)
+	request.Header.Set(key, value)
 	return request, nil
 }
 
-func newRequestWithBearer(url string, method string, token string) (*http.Request, error) {
+func newRequestWithHeaderSecret(url string, method string, key string, value string) (*http.Request, error) {
 
 	// Create a new request
 	request, err := newRequest(url, method)
@@ -68,7 +91,7 @@ func newRequestWithBearer(url string, method string, token string) (*http.Reques
 		return nil, err
 	}
 
-	request.Header.Set("Authorization", "Bearer "+token)
+	request.Header.Set(key, value)
 	return request, nil
 }
 
