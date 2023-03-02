@@ -107,7 +107,7 @@ func Loop(function func(), interval time.Duration) func() {
 	}, interval)
 }
 
-func LoopWithParam[T any](function func(T) bool, param T, interval time.Duration) func() {
+func LoopWithParam[T any](function func(T), param T, interval time.Duration) func() {
 	return StoppableLoopWithParam(func(param T) bool {
 		function(param)
 		return true
