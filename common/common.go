@@ -101,12 +101,36 @@ func WaitForWithOs(functions ...func()) {
 
 // Loop wraps a function in an endless loop and calls the function in the defined interval.
 func Loop(function func(), interval time.Duration) func() {
+	return StoppableLoop(func() bool {
+		function()
+		return true
+	}, interval)
+}
+
+func LoopWithParam[T any](function func(T) bool, param T, interval time.Duration) func() {
+	return StoppableLoopWithParam(func(param T) bool {
+		function(param)
+		return true
+	}, param, interval)
+}
+
+// StoppableLoop wraps a function in a loop and calls the function in the defined interval until the function return false.
+func StoppableLoop(function func() bool, interval time.Duration) func() {
+	return StoppableLoopWithParam(func(any) bool {
+		function()
+		return true
+	}, nil, interval)
+}
+
+func StoppableLoopWithParam[T any](function func(T) bool, param T, interval time.Duration) func() {
 	return func() {
 		osSignals := make(chan os.Signal, 1)
 		defer close(osSignals)
 		signal.Notify(osSignals, syscall.SIGTERM, syscall.SIGQUIT, syscall.SIGINT)
 		for {
-			function()
+			if !function(param) {
+				return
+			}
 			select {
 			case <-time.After(interval):
 			case <-osSignals:
