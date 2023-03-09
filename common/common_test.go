@@ -22,6 +22,26 @@ import (
 	"time"
 )
 
+func TestStoppableLoopWithParam(t *testing.T) {
+	var counter int64
+	WaitFor(StoppableLoopWithParam(doUntilList10, &counter, 10))
+	assert.Equal(t, int64(10), counter)
+}
+
+func TestStoppableLoop(t *testing.T) {
+	var counter int64
+	WaitFor(StoppableLoop(func() bool {
+		return doUntilList10(&counter)
+	}, 10))
+	assert.Equal(t, int64(10), counter)
+}
+
+func doUntilList10(counter *int64) bool {
+	atomic.AddInt64(counter, 1)
+	time.Sleep(time.Millisecond * 100)
+	return *counter < 10
+}
+
 func TestGetenv(t *testing.T) {
 	assert.Equal(t, "default", Getenv("FOO", "default"))
 	t.Setenv("FOO", "bar")

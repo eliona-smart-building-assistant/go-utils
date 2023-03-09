@@ -32,11 +32,19 @@ var runOnceIds sync.Map
 // RunOnce starts a function if this function not currently running. RunOnce knows, with function is currently
 // running (identified by id) and skips starting the function again.
 func RunOnce(function func(), id any) {
+	RunOnceWithParam(func(any) {
+		function()
+	}, nil, id)
+}
+
+// RunOnceWithParam starts a function if this function not currently running. RunOnce knows, with function is currently
+// running (identified by id) and skips starting the function again.
+func RunOnceWithParam[T any](function func(T), param T, id any) {
 	go func() {
 		_, alreadyRuns := runOnceIds.Load(id)
 		if !alreadyRuns {
 			runOnceIds.Store(id, nil)
-			function()
+			function(param)
 			runOnceIds.Delete(id)
 		}
 	}()
@@ -117,8 +125,7 @@ func LoopWithParam[T any](function func(T), param T, interval time.Duration) fun
 // StoppableLoop wraps a function in a loop and calls the function in the defined interval until the function return false.
 func StoppableLoop(function func() bool, interval time.Duration) func() {
 	return StoppableLoopWithParam(func(any) bool {
-		function()
-		return true
+		return function()
 	}, nil, interval)
 }
 
