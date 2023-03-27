@@ -22,11 +22,13 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/eliona-smart-building-assistant/go-utils/log"
+	"github.com/gorilla/websocket"
 	"io"
 	"io/ioutil"
 	"net/http"
 	"os"
 	"os/signal"
+	"strings"
 	"syscall"
 	"time"
 )
@@ -67,6 +69,51 @@ func newRequestWithBearerAndBody(url string, body any, method string, token stri
 
 func newRequestWithBearer(url string, method string, token string) (*http.Request, error) {
 	return newRequestWithHeaderSecret(url, method, "Authorization", "Bearer "+token)
+}
+
+// NewWebSocketConnectionWithApiKey creates a connection to a web socket. The url is authenticated with a named api key.
+func NewWebSocketConnectionWithApiKey(url string, key string, value string) (*websocket.Conn, error) {
+	dialer := websocket.Dialer{}
+	header := http.Header{}
+	header.Set(key, value)
+	url = strings.Replace(url, "https://", "wss://", -1)
+	url = strings.Replace(url, "http://", "ws://", -1)
+	conn, _, err := dialer.Dial(url, header)
+	if err != nil {
+		log.Error("Websocket", "Error dialing websocket: %v", err)
+		return nil, err
+	}
+	return conn, nil
+}
+
+// ListenWebSocket on a web socket connection and returns typed data
+func ListenWebSocket[T any](conn *websocket.Conn, objects chan T) {
+	for {
+		object, err := ReadWebSocket[T](conn)
+		if err != nil {
+			break
+		}
+		objects <- object
+	}
+}
+
+// ReadWebSocket reads one message from a web socket connection and returns typed data
+func ReadWebSocket[T any](conn *websocket.Conn) (T, error) {
+	var object T
+	tp, data, err := conn.ReadMessage()
+	if err != nil {
+		log.Error("websocket", "Error reading web socket: %v", err)
+		return object, err
+	}
+	if tp == websocket.TextMessage {
+		err := json.Unmarshal(data, &object)
+		if err != nil {
+			log.Error("websocket", "Error reading web socket: %v", err)
+			return object, err
+		}
+		return object, nil
+	}
+	return object, nil
 }
 
 func newRequestWithHeaderSecretAndBody(url string, body any, method string, key string, value string) (*http.Request, error) {
