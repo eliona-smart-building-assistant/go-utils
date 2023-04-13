@@ -86,8 +86,34 @@ func NewWebSocketConnectionWithApiKey(url string, key string, value string) (*we
 	return conn, nil
 }
 
+func ListenWebSocketWithReconnect[T any](newWebSocket func() (*websocket.Conn, error), reconnectDelay time.Duration, objects chan T) {
+	defer close(objects)
+	var err error
+	var conn *websocket.Conn
+	defer conn.Close()
+	for {
+		conn, err = newWebSocket()
+		if err != nil {
+			break
+		}
+		object, err := ReadWebSocket[T](conn)
+		if err != nil {
+			if closeError, ok := err.(*websocket.CloseError); ok {
+				if closeError.Code == websocket.CloseAbnormalClosure {
+					log.Info("websocket", "Reconnecting web socket after abnormal closure: %v", err)
+					time.Sleep(reconnectDelay)
+					continue
+				}
+			}
+			break
+		}
+		objects <- object
+	}
+}
+
 // ListenWebSocket on a web socket connection and returns typed data
 func ListenWebSocket[T any](conn *websocket.Conn, objects chan T) {
+	defer close(objects)
 	for {
 		object, err := ReadWebSocket[T](conn)
 		if err != nil {
@@ -99,21 +125,27 @@ func ListenWebSocket[T any](conn *websocket.Conn, objects chan T) {
 
 // ReadWebSocket reads one message from a web socket connection and returns typed data
 func ReadWebSocket[T any](conn *websocket.Conn) (T, error) {
-	var object T
-	tp, data, err := conn.ReadMessage()
-	if err != nil {
-		log.Error("websocket", "Error reading web socket: %v", err)
-		return object, err
-	}
-	if tp == websocket.TextMessage {
-		err := json.Unmarshal(data, &object)
+	for {
+		var object T
+		tp, data, err := conn.ReadMessage()
 		if err != nil {
+			if closeError, ok := err.(*websocket.CloseError); ok {
+				if closeError.Code == websocket.CloseAbnormalClosure {
+					return object, err
+				}
+			}
 			log.Error("websocket", "Error reading web socket: %v", err)
 			return object, err
 		}
-		return object, nil
+		if tp == websocket.TextMessage {
+			err := json.Unmarshal(data, &object)
+			if err != nil {
+				log.Error("websocket", "Error reading web socket: %v", err)
+				return object, err
+			}
+			return object, nil
+		}
 	}
-	return object, nil
 }
 
 func newRequestWithHeaderSecretAndBody(url string, body any, method string, key string, value string) (*http.Request, error) {
