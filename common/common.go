@@ -78,7 +78,6 @@ func WaitForWithOs(functions ...func()) {
 
 			// channel to get os signals
 			osSignals := make(chan os.Signal, 1)
-			defer close(osSignals)
 			signal.Notify(osSignals, syscall.SIGTERM, syscall.SIGQUIT, syscall.SIGINT)
 
 			// channel for function
