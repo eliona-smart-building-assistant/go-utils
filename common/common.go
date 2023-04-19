@@ -67,11 +67,6 @@ func WaitFor(functions ...func()) {
 // WaitForWithOs helps to start multiple functions in parallel and waits until all functions are completed or if system signals termination
 func WaitForWithOs(functions ...func()) {
 
-	// channel to get os signals
-	osSignals := make(chan os.Signal, 1)
-	defer close(osSignals)
-	signal.Notify(osSignals, syscall.SIGTERM, syscall.SIGQUIT, syscall.SIGINT)
-
 	// wait group to wait for worker functions
 	var waitGroup = &sync.WaitGroup{}
 	waitGroup.Add(len(functions))
@@ -79,7 +74,11 @@ func WaitForWithOs(functions ...func()) {
 	// start all functions
 	for _, function := range functions {
 
-		go func(f func(), wg *sync.WaitGroup, signals chan os.Signal) {
+		go func(f func(), wg *sync.WaitGroup) {
+
+			// channel to get os signals
+			osSignals := make(chan os.Signal, 1)
+			signal.Notify(osSignals, syscall.SIGTERM, syscall.SIGQUIT, syscall.SIGINT)
 
 			// channel for function
 			defer wg.Done()
@@ -95,11 +94,11 @@ func WaitForWithOs(functions ...func()) {
 			select {
 			case <-functionEnds:
 				return
-			case <-signals:
+			case <-osSignals:
 				return
 			}
 
-		}(function, waitGroup, osSignals)
+		}(function, waitGroup)
 
 	}
 
