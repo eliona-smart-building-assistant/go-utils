@@ -16,10 +16,11 @@
 package common
 
 import (
-	"github.com/stretchr/testify/assert"
 	"sync/atomic"
 	"testing"
 	"time"
+
+	"github.com/stretchr/testify/assert"
 )
 
 func TestStoppableLoopWithParam(t *testing.T) {
@@ -75,4 +76,91 @@ func TestRunOnce(t *testing.T) {
 func runsOnlyOnceAtSameTime(counter *int64) {
 	atomic.AddInt64(counter, 1)
 	time.Sleep(time.Millisecond * 100)
+}
+
+func TestFilter(t *testing.T) {
+	properties := map[string]string{"x": "...", "y": "...", "z": "..."}
+
+	testCases := []struct {
+		name       string
+		rules      [][]FilterRule
+		properties map[string]string
+		expected   bool
+	}{
+		{
+			name:       "Empty rules",
+			rules:      [][]FilterRule{},
+			properties: properties,
+			expected:   true,
+		},
+		{
+			name:       "No properties match",
+			rules:      [][]FilterRule{{{"x", "false"}}},
+			properties: map[string]string{"anotherproperty": "..."},
+			expected:   false,
+		},
+		{
+			name:       "No rules, no properties",
+			rules:      [][]FilterRule{},
+			properties: map[string]string{},
+			expected:   true,
+		},
+		{
+			name: "No matches",
+			rules: [][]FilterRule{
+				{{"x", "false"}},
+				{{"y", "false"}},
+			},
+			properties: properties,
+			expected:   false,
+		},
+		{
+			name: "Multiple matches",
+			rules: [][]FilterRule{
+				{{"x", "true"}},
+				{{"y", "true"}},
+			},
+			properties: properties,
+			expected:   true,
+		},
+		{
+			name: "Mixed matches",
+			rules: [][]FilterRule{
+				{{"x", "true"}},
+				{{"y", "false"}},
+			},
+			properties: properties,
+			expected:   true,
+		},
+		{
+			name: "Multiple conjunctions",
+			rules: [][]FilterRule{
+				{{"x", "true"}, {"y", "false"}},
+			},
+			properties: properties,
+			expected:   false,
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			result, err := filter(evaluateTestRule, tc.rules, tc.properties)
+			if err != nil {
+				t.Errorf("Unexpected error: %v", err)
+			}
+			if result != tc.expected {
+				t.Errorf("%s test failed: expected %v, got %v", tc.name, tc.expected, result)
+			}
+		})
+	}
+}
+
+func evaluateTestRule(value, rule string) (bool, error) {
+	switch rule {
+	case "true":
+		return true, nil
+	case "false":
+		return false, nil
+	}
+	panic("unknown rule")
 }

@@ -17,10 +17,12 @@ package common
 
 import (
 	"encoding/json"
+	"fmt"
 	"io/ioutil"
 	"os"
 	"os/signal"
 	"path/filepath"
+	"regexp"
 	"sync"
 	"syscall"
 	"time"
@@ -181,4 +183,57 @@ func StructToMap(data any) map[string]interface{} {
 	var m map[string]interface{}
 	_ = json.Unmarshal(d, &m)
 	return m
+}
+
+type FilterRule struct {
+	Parameter string
+	Regex     string
+}
+
+func filter(f func(value, rule string) (bool, error), rules [][]FilterRule, properties map[string]string) (bool, error) {
+	if len(rules) == 0 {
+		return true, nil
+	}
+	disjunction := false
+	for _, disjunctionElement := range rules {
+		conjunction := true
+		for _, rule := range disjunctionElement {
+			property, ok := properties[rule.Parameter]
+			if !ok {
+				// Key not present in map
+				conjunction = false
+				continue
+			}
+			match, err := f(property, rule.Regex)
+			if err != nil {
+				return false, fmt.Errorf("applying filter to property: %v", err)
+			}
+			if !match {
+				conjunction = false
+				continue
+			}
+		}
+		if conjunction == true {
+			disjunction = true
+		}
+	}
+	return disjunction, nil
+}
+
+func evaluateRule(value, rule string) (bool, error) {
+	r, err := regexp.Compile(rule)
+	if err != nil {
+		return false, fmt.Errorf("compiling rule regexp %v: %v", rule, err)
+	}
+	return !r.MatchString(value), nil
+}
+
+// Filter checks whether the properties adhere to the rules provided.
+//
+// The rules are a two-dimensional array where the first dimension is joined by
+// a logical disjunction ("OR") and the second one by a logical conjunction ("AND").
+//
+// The properties can be the for example the name and MAC address of a device.
+func Filter(rules [][]FilterRule, properties map[string]string) (bool, error) {
+	return filter(evaluateRule, rules, properties)
 }
