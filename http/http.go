@@ -21,8 +21,6 @@ import (
 	"crypto/tls"
 	"encoding/json"
 	"fmt"
-	"github.com/eliona-smart-building-assistant/go-utils/log"
-	"github.com/gorilla/websocket"
 	"io"
 	"io/ioutil"
 	"net/http"
@@ -31,6 +29,9 @@ import (
 	"strings"
 	"syscall"
 	"time"
+
+	"github.com/eliona-smart-building-assistant/go-utils/log"
+	"github.com/gorilla/websocket"
 )
 
 // NewRequestWithBearer creates a new request for the given url. The url is authenticated with a barrier token.
@@ -41,6 +42,11 @@ func NewRequestWithBearer(url string, token string) (*http.Request, error) {
 // NewRequestWithApiKey creates a new request for the given url. The url is authenticated with a named api key.
 func NewRequestWithApiKey(url string, key string, value string) (*http.Request, error) {
 	return newRequestWithHeaderSecret(url, "GET", key, value)
+}
+
+// NewRequestWithApiKey creates a new request for the given url. The url is authenticated with a named api key.
+func NewRequestWithHeaders(url string, headers map[string]string) (*http.Request, error) {
+	return newRequestWithHeaders(url, "GET", headers)
 }
 
 // NewPostRequestWithBearer creates a new request for the given url. The url is authenticated with a barrier token.
@@ -171,6 +177,19 @@ func newRequestWithHeaderSecret(url string, method string, key string, value str
 	}
 
 	request.Header.Set(key, value)
+	return request, nil
+}
+
+func newRequestWithHeaders(url string, method string, headers map[string]string) (*http.Request, error) {
+	request, err := newRequest(url, method)
+	if err != nil {
+		log.Error("Http", "Error creating request %s: %v", url, err)
+		return nil, err
+	}
+
+	for key, value := range headers {
+		request.Header.Set(key, value)
+	}
 	return request, nil
 }
 
