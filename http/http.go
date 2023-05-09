@@ -21,8 +21,6 @@ import (
 	"crypto/tls"
 	"encoding/json"
 	"fmt"
-	"github.com/eliona-smart-building-assistant/go-utils/log"
-	"github.com/gorilla/websocket"
 	"io"
 	"io/ioutil"
 	"net/http"
@@ -31,6 +29,9 @@ import (
 	"strings"
 	"syscall"
 	"time"
+
+	"github.com/eliona-smart-building-assistant/go-utils/log"
+	"github.com/gorilla/websocket"
 )
 
 // NewRequestWithBearer creates a new request for the given url. The url is authenticated with a barrier token.
@@ -40,7 +41,12 @@ func NewRequestWithBearer(url string, token string) (*http.Request, error) {
 
 // NewRequestWithApiKey creates a new request for the given url. The url is authenticated with a named api key.
 func NewRequestWithApiKey(url string, key string, value string) (*http.Request, error) {
-	return newRequestWithHeaderSecret(url, "GET", key, value)
+	return newRequestWithHeaders(url, "GET", map[string]string{key: value})
+}
+
+// NewRequestWithApiKey creates a new request for the given url. The url is authenticated with a named api key.
+func NewRequestWithHeaders(url string, headers map[string]string) (*http.Request, error) {
+	return newRequestWithHeaders(url, "GET", headers)
 }
 
 // NewPostRequestWithBearer creates a new request for the given url. The url is authenticated with a barrier token.
@@ -68,7 +74,7 @@ func newRequestWithBearerAndBody(url string, body any, method string, token stri
 }
 
 func newRequestWithBearer(url string, method string, token string) (*http.Request, error) {
-	return newRequestWithHeaderSecret(url, method, "Authorization", "Bearer "+token)
+	return newRequestWithHeaders(url, method, map[string]string{"Authorization": "Bearer " + token})
 }
 
 // NewWebSocketConnectionWithApiKey creates a connection to a web socket. The url is authenticated with a named api key.
@@ -161,16 +167,16 @@ func newRequestWithHeaderSecretAndBody(url string, body any, method string, key 
 	return request, nil
 }
 
-func newRequestWithHeaderSecret(url string, method string, key string, value string) (*http.Request, error) {
-
-	// Create a new request
+func newRequestWithHeaders(url string, method string, headers map[string]string) (*http.Request, error) {
 	request, err := newRequest(url, method)
 	if err != nil {
 		log.Error("Http", "Error creating request %s: %v", url, err)
 		return nil, err
 	}
 
-	request.Header.Set(key, value)
+	for key, value := range headers {
+		request.Header.Set(key, value)
+	}
 	return request, nil
 }
 
