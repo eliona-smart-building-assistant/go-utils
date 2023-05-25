@@ -233,7 +233,7 @@ func newRequest(url string, method string) (*http.Request, error) {
 func Read[T any](request *http.Request, timeout time.Duration, checkCertificate bool) (T, error) {
 	body, _, err := ReadWithStatusCode[T](request, timeout, checkCertificate)
 	if err != nil {
-		return nil, err
+		return body, err
 	}
 	return body, nil
 }
