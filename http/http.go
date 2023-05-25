@@ -231,28 +231,51 @@ func newRequest(url string, method string) (*http.Request, error) {
 
 // Read returns the response data converted to a corresponding structure
 func Read[T any](request *http.Request, timeout time.Duration, checkCertificate bool) (T, error) {
+	body, _, err := ReadWithStatusCode[T](request, timeout, checkCertificate)
+	if err != nil {
+		return nil, err
+	}
+	return body, nil
+}
+
+// ReadWithStatusCode returns the response data converted to a corresponding structure
+func ReadWithStatusCode[T any](request *http.Request, timeout time.Duration, checkCertificate bool) (T, int, error) {
 	var value T
 
-	payload, err := Do(request, timeout, checkCertificate)
+	payload, statusCode, err := DoWithStatusCode(request, timeout, checkCertificate)
 	if err != nil {
-		return value, err
+		return value, statusCode, err
 	}
 
 	if len(payload) == 0 {
-		return value, fmt.Errorf("request returns empty payload")
+		return value, statusCode, fmt.Errorf("request returns empty payload")
 	}
 
 	err = json.Unmarshal(payload, &value)
 	if err != nil {
 		log.Error("Http", "Unmarshal error: %v (%s)", err, string(payload))
-		return value, err
+		return value, statusCode, err
 	}
 
-	return value, nil
+	return value, statusCode, nil
 }
 
 // Do return the payload returned from the request
 func Do(request *http.Request, timeout time.Duration, checkCertificate bool) ([]byte, error) {
+	body, statusCode, err := DoWithStatusCode(request, timeout, checkCertificate)
+	if err != nil {
+		return body, err
+	}
+	if statusCode < 300 {
+		return body, nil
+	} else {
+		log.Error("Http", "Error request code %d for request to %s.", statusCode, request.URL)
+		return nil, fmt.Errorf("error request code %d for request to %s", statusCode, request.URL)
+	}
+}
+
+// DoWithStatusCode return the body and the code
+func DoWithStatusCode(request *http.Request, timeout time.Duration, checkCertificate bool) ([]byte, int, error) {
 
 	// creates a http client with timeout and tsl security configuration
 	httpClient := http.Client{
@@ -266,7 +289,7 @@ func Do(request *http.Request, timeout time.Duration, checkCertificate bool) ([]
 	response, err := httpClient.Do(request)
 	if err != nil {
 		log.Error("Http", "Error request to %s: %v", request.URL, err)
-		return nil, err
+		return nil, response.StatusCode, err
 	}
 
 	defer func(Body io.ReadCloser) {
@@ -280,16 +303,10 @@ func Do(request *http.Request, timeout time.Duration, checkCertificate bool) ([]
 	body, err := ioutil.ReadAll(response.Body)
 	if err != nil {
 		log.Error("Http", "Error body from %s: %v", request.URL, err)
-		return nil, err
+		return nil, response.StatusCode, err
 	}
 
-	// returns the payload as string, if the status code is OK
-	if response.StatusCode < 300 {
-		return body, nil
-	} else {
-		log.Error("Http", "Error request code %d for request to %s.", response.StatusCode, request.URL)
-		return nil, fmt.Errorf("error request code %d for request to %s", response.StatusCode, request.URL)
-	}
+	return body, response.StatusCode, nil
 }
 
 // ListenApiWithOs starts an API server and listen for API requests
