@@ -284,7 +284,7 @@ func Do(request *http.Request, timeout time.Duration, checkCertificate bool) ([]
 	}
 
 	// returns the payload as string, if the status code is OK
-	if response.StatusCode == http.StatusOK {
+	if response.StatusCode < 300 {
 		return body, nil
 	} else {
 		log.Error("Http", "Error request code %d for request to %s.", response.StatusCode, request.URL)
