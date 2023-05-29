@@ -100,6 +100,7 @@ func ListenWebSocketWithReconnect[T any](newWebSocket func() (*websocket.Conn, e
 	for {
 		conn, err = newWebSocket()
 		if err != nil {
+			log.Error("websocket", "Error creating web socket: %v", err)
 			break
 		}
 		object, err := ReadWebSocket[T](conn)
@@ -111,6 +112,7 @@ func ListenWebSocketWithReconnect[T any](newWebSocket func() (*websocket.Conn, e
 					continue
 				}
 			}
+			log.Error("websocket", "Error reading web socket: %v", err)
 			break
 		}
 		objects <- object
@@ -123,6 +125,7 @@ func ListenWebSocket[T any](conn *websocket.Conn, objects chan T) {
 	for {
 		object, err := ReadWebSocket[T](conn)
 		if err != nil {
+			log.Error("websocket", "Error reading web socket: %v", err)
 			break
 		}
 		objects <- object
