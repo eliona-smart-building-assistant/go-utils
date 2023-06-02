@@ -225,7 +225,7 @@ func evaluateRule(value, rule string) (bool, error) {
 	if err != nil {
 		return false, fmt.Errorf("compiling rule regexp %v: %v", rule, err)
 	}
-	return !r.MatchString(value), nil
+	return r.MatchString(value), nil
 }
 
 // Filter checks whether the properties adhere to the rules provided.
