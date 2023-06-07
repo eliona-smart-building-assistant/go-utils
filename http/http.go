@@ -44,7 +44,14 @@ func NewRequestWithApiKey(url string, key string, value string) (*http.Request, 
 	return newRequestWithHeaders(url, "GET", map[string]string{key: value})
 }
 
-// NewRequestWithApiKey creates a new request for the given url. The url is authenticated with a named api key.
+func NewDeleteRequestWithApiKey(url string, key string, value string) (*http.Request, error) {
+	return newRequestWithHeaders(url, "DELETE", map[string]string{key: value})
+}
+
+func NewPatchRequestWithApiKey(url string, key string, value string) (*http.Request, error) {
+	return newRequestWithHeaders(url, "PATCH", map[string]string{key: value})
+}
+
 func NewRequestWithHeaders(url string, headers map[string]string) (*http.Request, error) {
 	return newRequestWithHeaders(url, "GET", headers)
 }
