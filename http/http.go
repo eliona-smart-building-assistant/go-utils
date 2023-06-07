@@ -258,7 +258,7 @@ func ReadWithStatusCode[T any](request *http.Request, timeout time.Duration, che
 	}
 
 	if len(payload) == 0 {
-		return value, statusCode, fmt.Errorf("request returns empty payload")
+		return value, statusCode, nil
 	}
 
 	err = json.Unmarshal(payload, &value)
