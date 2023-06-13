@@ -68,3 +68,13 @@ func TestValuesNotMatch(t *testing.T) {
 	json2 = `{"name": "J..hn", "address": { "city": "New York", "street": "Fifth .*" }, "attributes": [ { "married": false }, "[0-9]{2}" ] }`
 	assert.Equal(t, "'name' > No match: \nexpected: J..hn\nactual  : John", *compareDataJson([]byte(json2), []byte(json1)))
 }
+
+func TestArrayEquals(t *testing.T) {
+	var array1 = []any{map[string]any{"name": "John"}, map[string]any{"street": "Fifth Avenue"}}
+	var array2 = []any{map[string]any{"name": "John"}, map[string]any{"street": "Fifth Avenue"}}
+	assert.Nil(t, compareArray(array2, array1))
+
+	array1 = []any{map[string]any{"name": "John"}, map[string]any{"street": "Fifth Avenue"}}
+	array2 = []any{map[string]any{"name": "Peter"}, map[string]any{"street": "Fifth Avenue"}}
+	assert.Equal(t, "'name' > Not equal: \nexpected: Peter\nactual  : John", *compareArray(array2, array1))
+}

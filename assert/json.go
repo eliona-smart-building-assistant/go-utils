@@ -24,7 +24,7 @@ import (
 	"regexp"
 )
 
-func JsonDataEquals(t assert.TestingT, expected, actual []byte, msgAndArgs ...interface{}) bool {
+func JsonDataEquals(t assert.TestingT, expected, actual []byte, msgAndArgs ...any) bool {
 	msg := compareDataJson(expected, actual)
 	if msg != nil {
 		return assert.Fail(t, *msg, msgAndArgs)
@@ -32,7 +32,7 @@ func JsonDataEquals(t assert.TestingT, expected, actual []byte, msgAndArgs ...in
 	return true
 }
 
-func JsonEquals(t assert.TestingT, expected, actual map[string]interface{}, msgAndArgs ...interface{}) bool {
+func JsonEquals(t assert.TestingT, expected, actual map[string]any, msgAndArgs ...any) bool {
 	msg := compareJson(expected, actual)
 	if msg != nil {
 		return assert.Fail(t, *msg, msgAndArgs)
@@ -40,8 +40,16 @@ func JsonEquals(t assert.TestingT, expected, actual map[string]interface{}, msgA
 	return true
 }
 
+func ArrayEquals(t assert.TestingT, expected, actual []any, msgAndArgs ...any) bool {
+	msg := compareArray(expected, actual)
+	if msg != nil {
+		return assert.Fail(t, *msg, msgAndArgs)
+	}
+	return true
+}
+
 func compareDataJson(expected, actual []byte) *string {
-	var objActual, objExpected map[string]interface{}
+	var objActual, objExpected map[string]any
 	if err := json.Unmarshal(actual, &objActual); err != nil {
 		return common.Ptr(err.Error())
 	}
@@ -51,7 +59,7 @@ func compareDataJson(expected, actual []byte) *string {
 	return compareJson(objExpected, objActual)
 }
 
-func compareJson(expected, actual map[string]interface{}) *string {
+func compareJson(expected, actual map[string]any) *string {
 	for keyExpected, valueExpected := range expected {
 		if valueActual, ok := actual[keyExpected]; ok {
 			msg := compareAny(valueExpected, valueActual)
@@ -67,7 +75,7 @@ func compareJson(expected, actual map[string]interface{}) *string {
 	return nil
 }
 
-func compareArray(expected, actual []interface{}) *string {
+func compareArray(expected, actual []any) *string {
 	if len(actual) != len(expected) {
 		msg := fmt.Sprintf("Length not equal: \n"+
 			"expected: %v\n"+
@@ -83,10 +91,10 @@ func compareArray(expected, actual []interface{}) *string {
 	return nil
 }
 
-func compareAny(expected, actual interface{}) *string {
+func compareAny(expected, actual any) *string {
 	switch valueExpected := expected.(type) {
-	case map[string]interface{}:
-		if valueActual, ok := actual.(map[string]interface{}); ok {
+	case map[string]any:
+		if valueActual, ok := actual.(map[string]any); ok {
 			msg := compareJson(valueExpected, valueActual)
 			if msg != nil {
 				return msg
@@ -97,8 +105,8 @@ func compareAny(expected, actual interface{}) *string {
 				"actual  : %v", reflect.TypeOf(expected))
 			return &msg
 		}
-	case []interface{}:
-		if valueActual, ok := actual.([]interface{}); ok {
+	case []any:
+		if valueActual, ok := actual.([]any); ok {
 			msg := compareArray(valueExpected, valueActual)
 			if msg != nil {
 				return msg
@@ -125,7 +133,7 @@ func compareAny(expected, actual interface{}) *string {
 	return nil
 }
 
-func compareValue(expected string, actual interface{}) *string {
+func compareValue(expected string, actual any) *string {
 	if regexp.QuoteMeta(expected) == expected {
 		if expected != fmt.Sprintf("%v", actual) {
 			msg := fmt.Sprintf("Not equal: \n"+
