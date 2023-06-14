@@ -36,7 +36,7 @@ func TestValuesEqual(t *testing.T) {
 
 	json2 = `{"attributes": [ { "married": false }, 30 ], "address": { "city": "New York" }, "name": "John"}`
 	assert.Nil(t, compareDataJson([]byte(json2), []byte(json1)), "Less content and different order")
-	assert.Equal(t, "Missing key: street", *compareDataJson([]byte(json1), []byte(json2)), "More content and different order")
+	assert.Equal(t, "'address' > Missing key 'street'", *compareDataJson([]byte(json1), []byte(json2)), "More content and different order")
 }
 
 func TestValuesNotEqual(t *testing.T) {

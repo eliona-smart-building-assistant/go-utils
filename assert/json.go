@@ -22,6 +22,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"reflect"
 	"regexp"
+	"sort"
 )
 
 func JsonDataEquals(t assert.TestingT, expected, actual []byte, msgAndArgs ...any) bool {
@@ -75,7 +76,21 @@ func compareJson(expected, actual map[string]any) *string {
 	return nil
 }
 
+type ByString []any
+
+func (a ByString) Len() int { return len(a) }
+
+func (a ByString) Swap(i, j int) { a[i], a[j] = a[j], a[i] }
+
+func (a ByString) Less(i, j int) bool {
+	x := fmt.Sprintf("%v", a[i])
+	y := fmt.Sprintf("%v", a[j])
+	return x < y
+}
+
 func compareArray(expected, actual []any) *string {
+	sort.Sort(ByString(expected))
+	sort.Sort(ByString(actual))
 	if len(actual) != len(expected) {
 		msg := fmt.Sprintf("Length not equal: \n"+
 			"expected: %v\n"+
