@@ -177,14 +177,6 @@ func Ptr[T any](v T) *T {
 	return &v
 }
 
-// StructToMap converts a struct to map of struct properties
-func StructToMap(data any) map[string]interface{} {
-	d, _ := json.Marshal(&data)
-	var m map[string]interface{}
-	_ = json.Unmarshal(d, &m)
-	return m
-}
-
 type FilterRule struct {
 	Parameter string
 	Regex     string
