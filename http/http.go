@@ -21,6 +21,9 @@ import (
 	"crypto/tls"
 	"encoding/json"
 	"fmt"
+	"github.com/eliona-smart-building-assistant/go-utils/log"
+	"github.com/gorilla/mux"
+	"github.com/gorilla/websocket"
 	"io"
 	"io/ioutil"
 	"net/http"
@@ -29,9 +32,6 @@ import (
 	"strings"
 	"syscall"
 	"time"
-
-	"github.com/eliona-smart-building-assistant/go-utils/log"
-	"github.com/gorilla/websocket"
 )
 
 // NewRequestWithBearer creates a new request for the given url. The url is authenticated with a barrier token.
@@ -350,4 +350,23 @@ func ListenApiWithOs(server *http.Server) {
 		return
 	}
 
+}
+
+type CORSEnabledRouter struct {
+	router *mux.Router
+}
+
+func (rwh CORSEnabledRouter) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	if r.Method == "OPTIONS" {
+		// Set CORS headers and allow the requested methods.
+		w.Header().Set("Access-Control-Allow-Origin", "*")
+		w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
+		w.Header().Set("Access-Control-Allow-Headers", "Authorization, Content-Type, X-Api-Key")
+
+		// Respond with 200 OK status.
+		w.WriteHeader(http.StatusOK)
+		return
+	}
+	w.Header().Set("Access-Control-Allow-Origin", "*")
+	rwh.router.ServeHTTP(w, r)
 }
