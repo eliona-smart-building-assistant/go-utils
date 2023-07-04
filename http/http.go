@@ -22,7 +22,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/eliona-smart-building-assistant/go-utils/log"
-	"github.com/gorilla/mux"
 	"github.com/gorilla/websocket"
 	"io"
 	"io/ioutil"
@@ -352,11 +351,15 @@ func ListenApiWithOs(server *http.Server) {
 
 }
 
-type CORSEnabledRouter struct {
-	router *mux.Router
+type CORSEnabledHandler struct {
+	handler http.Handler
 }
 
-func (rwh CORSEnabledRouter) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+func NewCORSEnabledHandler(handler http.Handler) CORSEnabledHandler {
+	return CORSEnabledHandler{handler: handler}
+}
+
+func (h CORSEnabledHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if r.Method == "OPTIONS" {
 		// Set CORS headers and allow the requested methods.
 		w.Header().Set("Access-Control-Allow-Origin", "*")
@@ -368,5 +371,5 @@ func (rwh CORSEnabledRouter) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	w.Header().Set("Access-Control-Allow-Origin", "*")
-	rwh.router.ServeHTTP(w, r)
+	h.handler.ServeHTTP(w, r)
 }
