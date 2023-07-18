@@ -306,7 +306,7 @@ func DoWithStatusCode(request *http.Request, timeout time.Duration, checkCertifi
 	response, err := httpClient.Do(request)
 	if err != nil {
 		log.Error("Http", "Error request to %s: %v", request.URL, err)
-		return nil, response.StatusCode, err
+		return nil, 0, err
 	}
 
 	defer func(Body io.ReadCloser) {
