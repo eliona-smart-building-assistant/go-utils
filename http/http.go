@@ -21,8 +21,6 @@ import (
 	"crypto/tls"
 	"encoding/json"
 	"fmt"
-	"github.com/eliona-smart-building-assistant/go-utils/log"
-	"github.com/gorilla/websocket"
 	"io"
 	"io/ioutil"
 	"net/http"
@@ -31,6 +29,9 @@ import (
 	"strings"
 	"syscall"
 	"time"
+
+	"github.com/eliona-smart-building-assistant/go-utils/log"
+	"github.com/gorilla/websocket"
 )
 
 // NewRequestWithBearer creates a new request for the given url. The url is authenticated with a barrier token.
@@ -102,7 +103,14 @@ func ListenWebSocketWithReconnect[T any](newWebSocket func() (*websocket.Conn, e
 	defer close(objects)
 	var err error
 	var conn *websocket.Conn
-	defer conn.Close()
+	defer func() {
+		if conn == nil {
+			return
+		}
+		if err := conn.Close(); err != nil {
+			log.Error("Websocket", "Error closing connection: %v", err)
+		}
+	}()
 	for {
 		conn, err = newWebSocket()
 		if err != nil {
