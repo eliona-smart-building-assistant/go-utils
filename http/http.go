@@ -22,7 +22,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"net/http"
 	"os"
 	"os/signal"
@@ -317,7 +316,7 @@ func DoWithStatusCode(request *http.Request, timeout time.Duration, checkCertifi
 	}(response.Body)
 
 	// read the complete payload
-	body, err := ioutil.ReadAll(response.Body)
+	body, err := io.ReadAll(response.Body)
 	if err != nil {
 		log.Error("Http", "Error body from %s: %v", request.URL, err)
 		return nil, response.StatusCode, err
