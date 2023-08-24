@@ -47,6 +47,10 @@ func NewDeleteRequestWithApiKey(url string, key string, value string) (*http.Req
 	return newRequestWithHeaders(url, "DELETE", map[string]string{key: value})
 }
 
+func NewDeleteRequestWithApiKeyAndBody(url string, body any, key string, value string) (*http.Request, error) {
+	return newRequestWithHeaderSecretAndBody(url, body, "DELETE", key, value)
+}
+
 func NewPatchRequestWithApiKey(url string, key string, value string) (*http.Request, error) {
 	return newRequestWithHeaders(url, "PATCH", map[string]string{key: value})
 }
