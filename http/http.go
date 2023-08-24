@@ -271,13 +271,16 @@ func ReadWithStatusCode[T any](request *http.Request, timeout time.Duration, che
 		return value, statusCode, nil
 	}
 
-	err = json.Unmarshal(payload, &value)
-	if err != nil {
-		log.Error("Http", "Unmarshal error: %v (%s)", err, string(payload))
-		return value, statusCode, err
+	if json.Valid(payload) {
+		err = json.Unmarshal(payload, &value)
+		if err != nil {
+			log.Error("Http", "Unmarshal error: %v (%s)", err, string(payload))
+			return value, statusCode, err
+		}
+		return value, statusCode, nil
+	} else {
+		return any(payload).(T), statusCode, nil
 	}
-
-	return value, statusCode, nil
 }
 
 // Do return the payload returned from the request
