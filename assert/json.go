@@ -49,6 +49,14 @@ func ArrayEquals(t assert.TestingT, expected, actual []any, msgAndArgs ...any) b
 	return true
 }
 
+func ArrayEqualsStrictOrder(t assert.TestingT, expected, actual []any, msgAndArgs ...any) bool {
+	msg := compareArrayStrictOrder(expected, actual)
+	if msg != nil {
+		return assert.Fail(t, *msg, msgAndArgs)
+	}
+	return true
+}
+
 func compareDataJson(expected, actual []byte) *string {
 	var objActual, objExpected map[string]any
 	if err := json.Unmarshal(actual, &objActual); err != nil {
@@ -91,6 +99,10 @@ func (a ByString) Less(i, j int) bool {
 func compareArray(expected, actual []any) *string {
 	sort.Sort(ByString(expected))
 	sort.Sort(ByString(actual))
+	return compareArrayStrictOrder(expected, actual)
+}
+
+func compareArrayStrictOrder(expected, actual []any) *string {
 	if len(actual) != len(expected) {
 		msg := fmt.Sprintf("Length not equal: \n"+
 			"expected: %v\n"+
