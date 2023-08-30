@@ -43,13 +43,13 @@ func TestValuesNotEqual(t *testing.T) {
 	var json1 = `{"name": "John", "address": { "city": "New York", "street": "Fifth Avenue" }, "attributes": [ { "married": false }, 30 ] }`
 
 	var json2 = `{"name": "John", "address": { "city": "New York", "street": "Sixth Avenue" }, "attributes": [ { "married": false }, 30 ] }`
-	assert.Equal(t, "'address' > 'street' > Not equal: \nexpected: Sixth Avenue\nactual  : Fifth Avenue", *compareDataJson([]byte(json2), []byte(json1)))
+	assert.Equal(t, "'address' > 'street' > Not equal: \nexpected: Sixth Avenue (string)\nactual  : Fifth Avenue (string)", *compareDataJson([]byte(json2), []byte(json1)))
 
 	json2 = `{"name": "John", "address": { "city": "New York", "street": "Fifth Avenue" }, "attributes": [ { "married": false }, 31 ] }`
-	assert.Equal(t, "'attributes' > Not equal: \nexpected: 31\nactual  : 30", *compareDataJson([]byte(json2), []byte(json1)))
+	assert.Equal(t, "'attributes' > Not equal: \nexpected: 31 (float64)\nactual  : 30 (float64)", *compareDataJson([]byte(json2), []byte(json1)))
 
 	json2 = `{"name": "John", "address": { "city": "New York", "street": "Fifth Avenue" }, "attributes": [ { "married": true }, 30 ] }`
-	assert.Equal(t, "'attributes' > 'married' > Not equal: \nexpected: true\nactual  : false", *compareDataJson([]byte(json2), []byte(json1)))
+	assert.Equal(t, "'attributes' > 'married' > Not equal: \nexpected: true (bool)\nactual  : false (bool)", *compareDataJson([]byte(json2), []byte(json1)))
 }
 
 func TestValuesMatch(t *testing.T) {
@@ -63,10 +63,10 @@ func TestValuesNotMatch(t *testing.T) {
 	var json1 = `{"name": "John", "address": { "city": "New York", "street": "Fifth Avenue" }, "attributes": [ { "married": false }, 30 ] }`
 
 	var json2 = `{"name": "J.hn", "address": { "city": "New York", "street": "Fifth .*" }, "attributes": [ { "married": false }, "[0-9]{3}" ] }`
-	assert.Equal(t, "'attributes' > No match: \nexpected: [0-9]{3}\nactual  : 30", *compareDataJson([]byte(json2), []byte(json1)))
+	assert.Equal(t, "'attributes' > No match: \nexpected: [0-9]{3} (string)\nactual  : 30 (float64)", *compareDataJson([]byte(json2), []byte(json1)))
 
 	json2 = `{"name": "J..hn", "address": { "city": "New York", "street": "Fifth .*" }, "attributes": [ { "married": false }, "[0-9]{2}" ] }`
-	assert.Equal(t, "'name' > No match: \nexpected: J..hn\nactual  : John", *compareDataJson([]byte(json2), []byte(json1)))
+	assert.Equal(t, "'name' > No match: \nexpected: J..hn (string)\nactual  : John (string)", *compareDataJson([]byte(json2), []byte(json1)))
 }
 
 func TestArrayEquals(t *testing.T) {
@@ -76,5 +76,5 @@ func TestArrayEquals(t *testing.T) {
 
 	array1 = []any{map[string]any{"name": "John"}, map[string]any{"street": "Fifth Avenue"}}
 	array2 = []any{map[string]any{"name": "Peter"}, map[string]any{"street": "Fifth Avenue"}}
-	assert.Equal(t, "'name' > Not equal: \nexpected: Peter\nactual  : John", *compareArray(array2, array1))
+	assert.Equal(t, "'name' > Not equal: \nexpected: Peter (string)\nactual  : John (string)", *compareArray(array2, array1))
 }

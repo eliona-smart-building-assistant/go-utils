@@ -152,8 +152,8 @@ func compareAny(expected, actual any) *string {
 	default:
 		if !reflect.DeepEqual(actual, expected) {
 			msg := fmt.Sprintf("Not equal: \n"+
-				"expected: %v\n"+
-				"actual  : %v", expected, actual)
+				"expected: %v (%s)\n"+
+				"actual  : %v (%s)", expected, reflect.TypeOf(expected).Name(), actual, reflect.TypeOf(actual).Name())
 			return &msg
 		}
 	}
@@ -164,8 +164,8 @@ func compareValue(expected string, actual any) *string {
 	if regexp.QuoteMeta(expected) == expected {
 		if expected != fmt.Sprintf("%v", actual) {
 			msg := fmt.Sprintf("Not equal: \n"+
-				"expected: %v\n"+
-				"actual  : %s", expected, actual)
+				"expected: %v (%s)\n"+
+				"actual  : %s (%s)", expected, reflect.TypeOf(expected).Name(), actual, reflect.TypeOf(actual).Name())
 			return &msg
 		}
 		return nil
@@ -173,8 +173,8 @@ func compareValue(expected string, actual any) *string {
 	re := regexp.MustCompile(expected)
 	if !re.MatchString(fmt.Sprintf("%v", actual)) {
 		msg := fmt.Sprintf("No match: \n"+
-			"expected: %s\n"+
-			"actual  : %v", expected, actual)
+			"expected: %s (%s)\n"+
+			"actual  : %v (%s)", expected, reflect.TypeOf(expected).Name(), actual, reflect.TypeOf(actual).Name())
 		return &msg
 	}
 	return nil
