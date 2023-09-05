@@ -59,6 +59,10 @@ func NewRequestWithHeaders(url string, headers map[string]string) (*http.Request
 	return newRequestWithHeaders(url, "GET", headers)
 }
 
+func NewPostRequestWithHeaders(url string, body any, headers map[string]string) (*http.Request, error) {
+	return newRequestWithHeadersAndBody(url, body, "POST", headers)
+}
+
 // NewPostRequestWithBearer creates a new request for the given url. The url is authenticated with a barrier token.
 func NewPostRequestWithBearer(url string, body any, token string) (*http.Request, error) {
 	return newRequestWithBearerAndBody(url, body, "POST", token)
@@ -184,6 +188,21 @@ func newRequestWithHeaderSecretAndBody(url string, body any, method string, key 
 	}
 
 	request.Header.Set(key, value)
+	return request, nil
+}
+
+func newRequestWithHeadersAndBody(url string, body any, method string, headers map[string]string) (*http.Request, error) {
+
+	// Create a new request
+	request, err := newRequestWithBody(url, body, method)
+	if err != nil {
+		log.Error("Http", "Error creating request %s: %v", url, err)
+		return nil, err
+	}
+
+	for key, value := range headers {
+		request.Header.Set(key, value)
+	}
 	return request, nil
 }
 
