@@ -229,6 +229,22 @@ func Listen[T any](conn *pgx.Conn, channel string, payloads chan T, errors chan 
 // ListenWithContext waits for notifications on database channel and writes the payload to the go channel.
 // The type of the go channel have to correspond to the payload JSON structure
 func ListenWithContext[T any](ctx context.Context, conn *pgx.Conn, channel string, payloads chan T, errors chan error) {
+	rawPayloads := make(chan string)
+	go ListenRawWithContext(ctx, conn, channel, rawPayloads, errors)
+
+	for rawPayload := range rawPayloads {
+		var payload T
+		err := json.Unmarshal([]byte(rawPayload), &payload)
+		if err != nil {
+			log.Error("Database", "Unmarshal error during listening: %v", err)
+			errors <- err
+		} else {
+			payloads <- payload
+		}
+	}
+}
+
+func ListenRawWithContext(ctx context.Context, conn *pgx.Conn, channel string, payloads chan string, errors chan error) {
 	_, err := conn.Exec(ctx, "listen "+channel)
 	if err != nil {
 		log.Error("Database", "Error listening on channel '%s': %v", channel, err)
@@ -247,13 +263,7 @@ func ListenWithContext[T any](ctx context.Context, conn *pgx.Conn, channel strin
 			return
 		}
 		if notification != nil {
-			var payload T
-			err := json.Unmarshal([]byte(notification.Payload), &payload)
-			if err != nil {
-				log.Error("Database", "Unmarshal error during listening: %v", err)
-				errors <- err
-			}
-			payloads <- payload
+			payloads <- notification.Payload
 		}
 	}
 }
