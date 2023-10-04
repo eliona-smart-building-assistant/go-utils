@@ -19,10 +19,12 @@ import (
 	"bytes"
 	"context"
 	"crypto/tls"
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"io"
 	"net/http"
+	"net/url"
 	"os"
 	"os/signal"
 	"strings"
@@ -61,6 +63,32 @@ func NewRequestWithHeaders(url string, headers map[string]string) (*http.Request
 
 func NewPostRequestWithHeaders(url string, body any, headers map[string]string) (*http.Request, error) {
 	return newRequestWithHeadersAndBody(url, body, "POST", headers)
+}
+
+func encodeForm(data map[string]map[string]string) string {
+	v := url.Values{}
+	for key, subMap := range data {
+		for subKey, subValue := range subMap {
+			v.Add(fmt.Sprintf("%s[%s]", key, subKey), subValue)
+		}
+	}
+	return v.Encode()
+}
+
+func NewPostFormRequestWithBasicAuth(url string, form map[string]map[string]string, username string, password string) (*http.Request, error) {
+	return NewPostFormRequestWithHeaders(url, form, map[string]string{"Authorization": "Basic " + base64.StdEncoding.EncodeToString([]byte(username+":"+password))})
+}
+
+func NewPostFormRequestWithHeaders(url string, form map[string]map[string]string, headers map[string]string) (*http.Request, error) {
+	request, err := newRequestWithBody(url, encodeForm(form), "application/x-www-form-urlencoded", "POST")
+	if err != nil {
+		log.Error("http", "error creating request %s: %v", url, err)
+		return nil, err
+	}
+	for key, value := range headers {
+		request.Header.Set(key, value)
+	}
+	return request, nil
 }
 
 // NewPostRequestWithBearer creates a new request for the given url. The url is authenticated with a barrier token.
@@ -181,7 +209,7 @@ func ReadWebSocket[T any](conn *websocket.Conn) (T, error) {
 func newRequestWithHeaderSecretAndBody(url string, body any, method string, key string, value string) (*http.Request, error) {
 
 	// Create a new request
-	request, err := newRequestWithBody(url, body, method)
+	request, err := newRequestWithBody(url, body, "application/json", method)
 	if err != nil {
 		log.Error("Http", "Error creating request %s: %v", url, err)
 		return nil, err
@@ -194,7 +222,7 @@ func newRequestWithHeaderSecretAndBody(url string, body any, method string, key 
 func newRequestWithHeadersAndBody(url string, body any, method string, headers map[string]string) (*http.Request, error) {
 
 	// Create a new request
-	request, err := newRequestWithBody(url, body, method)
+	request, err := newRequestWithBody(url, body, "application/json", method)
 	if err != nil {
 		log.Error("Http", "Error creating request %s: %v", url, err)
 		return nil, err
@@ -228,16 +256,16 @@ func NewRequest(url string) (*http.Request, error) {
 // NewPostRequest creates a new request for the given url and the body as payload. The url have to provide free access without any
 // authentication. For authentication use other functions like NewPostRequestWithBearer.
 func NewPostRequest(url string, body any) (*http.Request, error) {
-	return newRequestWithBody(url, body, "POST")
+	return newRequestWithBody(url, body, "application/json", "POST")
 }
 
 // NewPutRequest creates a new request for the given url and the body as payload. The url have to provide free access without any
 // authentication. For authentication use other functions like NewPutRequestWithBearer.
 func NewPutRequest(url string, body any) (*http.Request, error) {
-	return newRequestWithBody(url, body, "PUT")
+	return newRequestWithBody(url, body, "application/json", "PUT")
 }
 
-func newRequestWithBody(url string, body any, method string) (*http.Request, error) {
+func newRequestWithBody(url string, body any, contentType string, method string) (*http.Request, error) {
 
 	// Create payload if used
 	payload, err := json.Marshal(body)
@@ -253,7 +281,7 @@ func newRequestWithBody(url string, body any, method string) (*http.Request, err
 		return nil, err
 	}
 
-	request.Header.Set("Content-Type", "application/json")
+	request.Header.Set("Content-Type", contentType)
 	return request, nil
 }
 
