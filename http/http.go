@@ -268,10 +268,16 @@ func NewPutRequest(url string, body any) (*http.Request, error) {
 func newRequestWithBody(url string, body any, contentType string, method string) (*http.Request, error) {
 
 	// Create payload if used
-	payload, err := json.Marshal(body)
-	if err != nil {
-		log.Error("Kafka", "Failed to marshal body: %s", err.Error())
-		return nil, err
+	var payload []byte
+	var err error
+	if contentType == "application/json" {
+		payload, err = json.Marshal(body)
+		if err != nil {
+			log.Error("Kafka", "Failed to marshal body: %s", err.Error())
+			return nil, err
+		}
+	} else {
+		payload = []byte(body.(string))
 	}
 
 	// Create a new request with payload if used
