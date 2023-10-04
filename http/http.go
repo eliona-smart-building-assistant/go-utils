@@ -65,21 +65,21 @@ func NewPostRequestWithHeaders(url string, body any, headers map[string]string) 
 	return newRequestWithHeadersAndBody(url, body, "POST", headers)
 }
 
-func encodeForm(data map[string]map[string]string) string {
-	v := url.Values{}
-	for key, subMap := range data {
-		for subKey, subValue := range subMap {
-			v.Add(fmt.Sprintf("%s[%s]", key, subKey), subValue)
+func encodeForm(form map[string][]string) string {
+	values := url.Values{}
+	for name, vs := range form {
+		for _, v := range vs {
+			values.Add(name, v)
 		}
 	}
-	return v.Encode()
+	return values.Encode()
 }
 
-func NewPostFormRequestWithBasicAuth(url string, form map[string]map[string]string, username string, password string) (*http.Request, error) {
+func NewPostFormRequestWithBasicAuth(url string, form map[string][]string, username string, password string) (*http.Request, error) {
 	return NewPostFormRequestWithHeaders(url, form, map[string]string{"Authorization": "Basic " + base64.StdEncoding.EncodeToString([]byte(username+":"+password))})
 }
 
-func NewPostFormRequestWithHeaders(url string, form map[string]map[string]string, headers map[string]string) (*http.Request, error) {
+func NewPostFormRequestWithHeaders(url string, form map[string][]string, headers map[string]string) (*http.Request, error) {
 	request, err := newRequestWithBody(url, encodeForm(form), "application/x-www-form-urlencoded", "POST")
 	if err != nil {
 		log.Error("http", "error creating request %s: %v", url, err)
