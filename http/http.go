@@ -334,7 +334,7 @@ func ReadWithStatusCode[T any](request *http.Request, timeout time.Duration, che
 	} else if _, ok := interface{}(value).(string); ok {
 		return any(string(payload)).(T), statusCode, nil
 	} else {
-		return value, statusCode, fmt.Errorf("invalid payload format")
+		return value, statusCode, fmt.Errorf("invalid payload format: %v", string(payload))
 	}
 }
 
