@@ -213,7 +213,7 @@ func filter(f func(value, rule string) (bool, error), rules [][]FilterRule, prop
 				continue
 			}
 		}
-		if conjunction == true {
+		if conjunction {
 			disjunction = true
 		}
 	}

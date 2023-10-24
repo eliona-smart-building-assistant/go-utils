@@ -325,7 +325,7 @@ func ReadWithStatusCode[T any](request *http.Request, timeout time.Duration, che
 
 	payload, statusCode, err := DoWithStatusCode(request, timeout, checkCertificate)
 	if err != nil {
-		return value, statusCode, err
+		return value, statusCode, fmt.Errorf("do with status code: %v", err)
 	}
 
 	if len(payload) == 0 {
@@ -333,14 +333,16 @@ func ReadWithStatusCode[T any](request *http.Request, timeout time.Duration, che
 	}
 
 	if json.Valid(payload) {
-		err = json.Unmarshal(payload, &value)
+		err := json.Unmarshal(payload, &value)
 		if err != nil {
 			log.Error("Http", "Unmarshal error: %v (%s)", err, string(payload))
-			return value, statusCode, err
+			return value, statusCode, fmt.Errorf("unmarshaling: %v", err)
 		}
 		return value, statusCode, nil
+	} else if _, ok := interface{}(value).(string); ok {
+		return any(string(payload)).(T), statusCode, nil
 	} else {
-		return any(payload).(T), statusCode, nil
+		return value, statusCode, fmt.Errorf("invalid payload format: %v", string(payload))
 	}
 }
 
