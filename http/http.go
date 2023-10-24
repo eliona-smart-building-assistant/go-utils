@@ -155,13 +155,14 @@ func ListenWebSocketWithReconnect[T any](newWebSocket func() (*websocket.Conn, e
 		object, err := ReadWebSocket[T](conn)
 		if err != nil {
 			if closeError, ok := err.(*websocket.CloseError); ok {
-				if closeError.Code == websocket.CloseAbnormalClosure {
+				if closeError.Code != websocket.CloseNormalClosure {
 					log.Info("websocket", "Reconnecting web socket after abnormal closure: %v", err)
 					time.Sleep(reconnectDelay)
 					continue
 				}
+			} else {
+				log.Error("websocket", "Error reading web socket: %v", err)
 			}
-			log.Error("websocket", "Error reading web socket: %v", err)
 			break
 		}
 		objects <- object
@@ -174,7 +175,13 @@ func ListenWebSocket[T any](conn *websocket.Conn, objects chan T) {
 	for {
 		object, err := ReadWebSocket[T](conn)
 		if err != nil {
-			log.Error("websocket", "Error reading web socket: %v", err)
+			if closeError, ok := err.(*websocket.CloseError); ok {
+				if closeError.Code != websocket.CloseNormalClosure {
+					log.Error("websocket", "Error reading web socket: %v", err)
+				}
+			} else {
+				log.Error("websocket", "Error reading web socket: %v", err)
+			}
 			break
 		}
 		objects <- object
@@ -188,17 +195,18 @@ func ReadWebSocket[T any](conn *websocket.Conn) (T, error) {
 		tp, data, err := conn.ReadMessage()
 		if err != nil {
 			if closeError, ok := err.(*websocket.CloseError); ok {
-				if closeError.Code == websocket.CloseAbnormalClosure {
-					return object, err
+				if closeError.Code != websocket.CloseNormalClosure {
+					log.Error("websocket", "Error reading web socket: %v", closeError)
 				}
+			} else {
+				log.Error("websocket", "Error reading web socket: %v", err)
 			}
-			log.Error("websocket", "Error reading web socket: %v", err)
 			return object, err
 		}
 		if tp == websocket.TextMessage {
 			err := json.Unmarshal(data, &object)
 			if err != nil {
-				log.Error("websocket", "Error reading web socket: %v", err)
+				log.Error("websocket", "Error unmarshalling message from web socket: %v", err)
 				return object, err
 			}
 			return object, nil
