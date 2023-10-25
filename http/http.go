@@ -134,82 +134,69 @@ func NewWebSocketConnectionWithApiKey(url string, key string, value string) (*we
 	return conn, nil
 }
 
-func ListenWebSocketWithReconnect[T any](newWebSocket func() (*websocket.Conn, error), reconnectDelay time.Duration, objects chan T) {
-	defer close(objects)
+func ListenWebSocketWithReconnect[T any](newWebSocket func() (*websocket.Conn, error), reconnectDelay time.Duration, objects chan T) error {
 	var err error
 	var conn *websocket.Conn
 	defer func() {
-		if conn == nil {
-			return
-		}
-		if err := conn.Close(); err != nil {
-			log.Error("Websocket", "Error closing connection: %v", err)
+		if conn != nil {
+			_ = conn.Close()
 		}
 	}()
 	for {
 		conn, err = newWebSocket()
 		if err != nil {
 			log.Error("websocket", "Error creating web socket: %v", err)
-			break
+			return err
 		}
-		object, err := ReadWebSocket[T](conn)
+		err := ListenWebSocket(conn, objects)
 		if err != nil {
 			if closeError, ok := err.(*websocket.CloseError); ok {
-				if closeError.Code != websocket.CloseNormalClosure {
-					log.Info("websocket", "Reconnecting web socket after abnormal closure: %v", err)
+				if closeError.Code == websocket.CloseAbnormalClosure {
+					log.Debug("websocket", "Reconnecting web socket after abnormal closure: %v", err)
 					time.Sleep(reconnectDelay)
 					continue
 				}
-			} else {
-				log.Error("websocket", "Error reading web socket: %v", err)
 			}
-			break
 		}
-		objects <- object
+		return err
 	}
 }
 
 // ListenWebSocket on a web socket connection and returns typed data
-func ListenWebSocket[T any](conn *websocket.Conn, objects chan T) {
-	defer close(objects)
+func ListenWebSocket[T any](conn *websocket.Conn, objects chan T) error {
 	for {
 		object, err := ReadWebSocket[T](conn)
-		if err != nil {
-			if closeError, ok := err.(*websocket.CloseError); ok {
-				if closeError.Code != websocket.CloseNormalClosure {
-					log.Error("websocket", "Error reading web socket: %v", err)
-				}
-			} else {
-				log.Error("websocket", "Error reading web socket: %v", err)
-			}
-			break
+		if err != nil || object == nil {
+			return err
 		}
-		objects <- object
+		objects <- *object
 	}
 }
 
 // ReadWebSocket reads one message from a web socket connection and returns typed data
-func ReadWebSocket[T any](conn *websocket.Conn) (T, error) {
+func ReadWebSocket[T any](conn *websocket.Conn) (*T, error) {
 	for {
 		var object T
 		tp, data, err := conn.ReadMessage()
 		if err != nil {
 			if closeError, ok := err.(*websocket.CloseError); ok {
-				if closeError.Code != websocket.CloseNormalClosure {
+				if closeError.Code == websocket.CloseNormalClosure {
+					return nil, nil
+				} else {
 					log.Error("websocket", "Error reading web socket: %v", closeError)
 				}
 			} else {
 				log.Error("websocket", "Error reading web socket: %v", err)
 			}
-			return object, err
+			return nil, err
 		}
 		if tp == websocket.TextMessage {
 			err := json.Unmarshal(data, &object)
 			if err != nil {
 				log.Error("websocket", "Error unmarshalling message from web socket: %v", err)
-				return object, err
+				return nil, err
 			}
-			return object, nil
+			return &object, nil
 		}
 	}
 }
