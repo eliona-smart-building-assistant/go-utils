@@ -134,6 +134,33 @@ func NewWebSocketConnectionWithApiKey(url string, key string, value string) (*we
 	return conn, nil
 }
 
+func ListenWebSocketWithReconnectAlways[T any](newWebSocket func() (*websocket.Conn, error), reconnectDelay time.Duration, objects chan T) error {
+	var err error
+	var conn *websocket.Conn
+	defer func() {
+		if conn != nil {
+			_ = conn.Close()
+		}
+	}()
+	for {
+		conn, err = newWebSocket()
+		if err != nil {
+			log.Error("websocket", "Error creating web socket: %v", err)
+			return err
+		}
+		err := ListenWebSocket(conn, objects)
+		if err != nil {
+			if closeError, ok := err.(*websocket.CloseError); ok {
+				if closeError.Code == websocket.CloseNormalClosure {
+					return nil
+				}
+			}
+		}
+		time.Sleep(reconnectDelay)
+		continue
+	}
+}
+
 func ListenWebSocketWithReconnect[T any](newWebSocket func() (*websocket.Conn, error), reconnectDelay time.Duration, objects chan T) error {
 	var err error
 	var conn *websocket.Conn
