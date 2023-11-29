@@ -204,9 +204,21 @@ func Database(applicationName string) *sql.DB {
 
 // NewDatabase returns always a new database connection from CONNECTION_STRING.
 func NewDatabase(applicationName string) *sql.DB {
-	database, err := sql.Open("postgres", fmt.Sprintf("host='%s' port='%d' user='%s' password='%s' dbname='%s' sslmode=disable application_name='%s'", Hostname(), Port(), Username(), Password(), DatabaseName(), applicationName))
+	database, err := sql.Open("postgres", fmt.Sprintf("host='%s' port='%d' user='%s' password='%s' dbname='%s' application_name='%s'", Hostname(), Port(), Username(), Password(), DatabaseName(), applicationName))
 	if err != nil {
 		log.Fatal("Database", "Cannot connect to database: %v", err)
+	}
+	err = database.Ping()
+	if err != nil {
+		log.Debug("Database", "Try Database connection without SSL: %v", err)
+		database, err = sql.Open("postgres", fmt.Sprintf("host='%s' port='%d' user='%s' password='%s' dbname='%s' sslmode=disable application_name='%s'", Hostname(), Port(), Username(), Password(), DatabaseName(), applicationName))
+		if err != nil {
+			log.Fatal("Database", "Cannot connect to database: %v", err)
+		}
+		err = database.Ping()
+		if err != nil {
+			log.Fatal("Database", "Cannot connect to database: %v", err)
+		}
 	}
 	log.Debug("Database", "Database created")
 	return database
