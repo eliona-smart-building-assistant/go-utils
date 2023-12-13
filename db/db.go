@@ -115,6 +115,17 @@ func ConnectionConfig() *pgx.ConnConfig {
 	return config
 }
 
+func ConnectionConfigWithApplicationName(applicationName string) *pgx.ConnConfig {
+	config, err := pgx.ParseConfig(ConnectionString())
+	if err != nil {
+		log.Fatal("Database", "Unable to parse database URL: %v", err)
+	}
+	config.RuntimeParams = map[string]string{
+		"application_name": applicationName,
+	}
+	return config
+}
+
 func PoolConfig() *pgxpool.Config {
 	config, err := pgxpool.ParseConfig(ConnectionString())
 	if err != nil {
@@ -145,6 +156,15 @@ func NewConnection() *pgx.Conn {
 // NewConnectionWithContext returns a new connection defined by CONNECTION_STRING environment variable.
 func NewConnectionWithContext(ctx context.Context) *pgx.Conn {
 	connection, err := pgx.ConnectConfig(ctx, ConnectionConfig())
+	if err != nil {
+		log.Fatal("Database", "Unable to create connection to database: %v", err)
+	}
+	log.Debug("Database", "Connection created")
+	return connection
+}
+
+func NewConnectionWithContextAndApplicationName(ctx context.Context, applicationName string) *pgx.Conn {
+	connection, err := pgx.ConnectConfig(ctx, ConnectionConfigWithApplicationName(applicationName))
 	if err != nil {
 		log.Fatal("Database", "Unable to create connection to database: %v", err)
 	}
@@ -257,7 +277,7 @@ func ListenWithContext[T any](ctx context.Context, conn *pgx.Conn, channel strin
 }
 
 func ListenRawWithContext(ctx context.Context, conn *pgx.Conn, channel string, payloads chan string, errors chan error) {
-	_, err := conn.Exec(ctx, "listen "+channel)
+	_, err := conn.Exec(ctx, "LISTEN "+channel)
 	if err != nil {
 		log.Error("Database", "Error listening on channel '%s': %v", channel, err)
 		errors <- err
