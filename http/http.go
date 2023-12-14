@@ -141,6 +141,8 @@ func ListenWebSocketWithReconnectAlways[T any](newWebSocket func() (*websocket.C
 		if conn != nil {
 			_ = conn.Close()
 		}
+		// If this method returns, signal that no further values will be sent.
+		close(objects)
 	}()
 	for {
 		conn, err = newWebSocket()
