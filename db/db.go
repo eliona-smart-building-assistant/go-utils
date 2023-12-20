@@ -32,6 +32,7 @@ import (
 	"path/filepath"
 	"reflect"
 	"strconv"
+	"strings"
 	"sync"
 )
 
@@ -295,7 +296,9 @@ func ListenRawWithContext(ctx context.Context, conn *pgx.Conn, channel string, p
 			return
 		}
 		if notification != nil {
-			payloads <- notification.Payload
+			var payload = notification.Payload
+			payload = strings.TrimPrefix(payload, "~") // for deletion
+			payloads <- payload
 		}
 	}
 }
