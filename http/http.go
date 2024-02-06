@@ -45,6 +45,10 @@ func NewRequestWithApiKey(url string, key string, value string) (*http.Request, 
 	return newRequestWithHeaders(url, "GET", map[string]string{key: value})
 }
 
+func NewDeleteRequestWithBearer(url string, token string) (*http.Request, error) {
+	return newRequestWithBearer(url, "DELETE", token)
+}
+
 func NewDeleteRequestWithApiKey(url string, key string, value string) (*http.Request, error) {
 	return newRequestWithHeaders(url, "DELETE", map[string]string{key: value})
 }
