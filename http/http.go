@@ -361,8 +361,10 @@ func ReadWithStatusCode[T any](request *http.Request, timeout time.Duration, che
 		return value, statusCode, nil
 	} else if _, ok := interface{}(value).(string); ok {
 		return any(string(payload)).(T), statusCode, nil
+	} else if _, ok := interface{}(value).([]byte); ok {
+		return any(string(payload)).(T), statusCode, nil
 	} else {
-		return any(payload).(T), statusCode, nil
+		return value, statusCode, fmt.Errorf("can't use payload as type %T", value)
 	}
 }
 
