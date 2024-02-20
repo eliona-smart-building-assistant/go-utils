@@ -39,11 +39,12 @@ const (
 	ErrorLevel
 	// WarnLevel level. Non-critical entries that deserve eyes.
 	WarnLevel
-	// InfoLevel level. General operational entries about what's going on inside the
-	// application.
+	// InfoLevel level. General operational entries about what's going on inside the application.
 	InfoLevel
-	// DebugLevel level. Usually only enabled when debugging. Very verbose logging.
+	// DebugLevel level. Output information necessary for debugging. Verbose logging.
 	DebugLevel
+	// TraceLevel level. Enabled when everything should be outputted. Maximum detailed logging.
+	TraceLevel
 )
 
 // Convert the Level to a string. E.g. ErrorLevel becomes "ERROR".
@@ -57,6 +58,8 @@ func (level Level) String() string {
 
 func (level Level) MarshalText() ([]byte, error) {
 	switch level {
+	case TraceLevel:
+		return []byte("TRACE"), nil
 	case DebugLevel:
 		return []byte("DEBUG"), nil
 	case InfoLevel:
@@ -83,6 +86,8 @@ func parseLevel(lvl string) Level {
 		return WarnLevel
 	case "info":
 		return InfoLevel
+	case "trace":
+		return TraceLevel
 	default:
 		return DebugLevel
 	}
@@ -316,6 +321,12 @@ func (l *Logger) Debug(tag, format string, v ...interface{}) {
 	l.Printf(DebugLevel, tag, format, v...)
 }
 
+// Trace calls Printf to print to the standard logger with the trace level. As tag
+// the app name is taken. Other arguments are handled in the manner of fmt.Printf.
+func (l *Logger) Trace(tag, format string, v ...interface{}) {
+	l.Printf(TraceLevel, tag, format, v...)
+}
+
 // Fatal calls Printf to print to the standard logger with the debug level. As tag
 // the app name is taken. Other arguments are handled in the manner of fmt.Printf.
 // After logging aborting with exit status 1
@@ -409,6 +420,12 @@ func Info(tag, format string, v ...interface{}) {
 // the app name is taken. Other arguments are handled in the manner of fmt.Printf.
 func Debug(tag, format string, v ...interface{}) {
 	std.Debug(tag, format, v...)
+}
+
+// Trace calls Printf to print to the standard logger with the trace level. As tag
+// the app name is taken. Other arguments are handled in the manner of fmt.Printf.
+func Trace(tag, format string, v ...interface{}) {
+	std.Trace(tag, format, v...)
 }
 
 // Fatal calls Printf to print to the standard logger with the debug level. As tag
