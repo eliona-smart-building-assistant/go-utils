@@ -110,7 +110,6 @@ type Connection interface {
 	Exec(context.Context, string, ...interface{}) (pgconn.CommandTag, error)
 	Query(ctx context.Context, sql string, args ...interface{}) (pgx.Rows, error)
 	Begin(ctx context.Context) (pgx.Tx, error)
-	Config() *pgx.ConnConfig
 }
 
 // ConnectionConfig returns the connection config defined by CONNECTION_STRING environment variable.
