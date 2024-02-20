@@ -219,14 +219,21 @@ func (l *Logger) formatHeader(buf *[]byte, t time.Time, level Level, tag string)
 // Logger. A newline is appended if the last character of s is not
 // already a newline. Output won't write more bytes than bufLimit (if it's set)
 func (l *Logger) Output(level Level, tag, s string) error {
+	return l.Timestamp(level, time.Now(), tag, s)
+}
+
+// Timestamp writes the output with an own timestamp for a logging event. The string s contains
+// the text to print after the tag specified by the flags of the
+// Logger. A newline is appended if the last character of s is not
+// already a newline. Output won't write more bytes than bufLimit (if it's set)
+func (l *Logger) Timestamp(level Level, timestamp time.Time, tag, s string) error {
 	if !l.IsLevelEnabled(level) {
 		return nil
 	}
-	now := time.Now() // get this early.
 	l.mu.Lock()
 	defer l.mu.Unlock()
 	l.buf = l.buf[:0]
-	l.formatHeader(&l.buf, now, level, tag)
+	l.formatHeader(&l.buf, timestamp, level, tag)
 	l.buf = append(l.buf, s...)
 	// if limit is set truncate buf
 	if l.bufLimit > 0 && int64(len(l.buf)) >= l.bufLimit {
@@ -244,7 +251,15 @@ func (l *Logger) Output(level Level, tag, s string) error {
 // Arguments are handled in the manner of fmt.Printf.
 func (l *Logger) Printf(level Level, tag, format string, v ...interface{}) {
 	if l.IsLevelEnabled(level) {
-		l.Output(level, tag, fmt.Sprintf(format, v...))
+		_ = l.Output(level, tag, fmt.Sprintf(format, v...))
+	}
+}
+
+// TimestampPrintf calls l.Output to print to the logger.
+// Arguments are handled in the manner of fmt.Printf.
+func (l *Logger) TimestampPrintf(level Level, timestamp time.Time, tag, format string, v ...interface{}) {
+	if l.IsLevelEnabled(level) {
+		_ = l.Timestamp(level, timestamp, tag, fmt.Sprintf(format, v...))
 	}
 }
 
@@ -252,7 +267,7 @@ func (l *Logger) Printf(level Level, tag, format string, v ...interface{}) {
 // Arguments are handled in the manner of fmt.Print.
 func (l *Logger) Print(level Level, tag string, v ...interface{}) {
 	if l.IsLevelEnabled(level) {
-		l.Output(level, tag, fmt.Sprint(v...))
+		_ = l.Output(level, tag, fmt.Sprint(v...))
 	}
 }
 
@@ -260,7 +275,7 @@ func (l *Logger) Print(level Level, tag string, v ...interface{}) {
 // Arguments are handled in the manner of fmt.Println.
 func (l *Logger) Println(level Level, tag string, v ...interface{}) {
 	if l.IsLevelEnabled(level) {
-		l.Output(level, tag, fmt.Sprintln(v...))
+		_ = l.Output(level, tag, fmt.Sprintln(v...))
 	}
 }
 
@@ -426,6 +441,12 @@ func Debug(tag, format string, v ...interface{}) {
 // the app name is taken. Other arguments are handled in the manner of fmt.Printf.
 func Trace(tag, format string, v ...interface{}) {
 	std.Trace(tag, format, v...)
+}
+
+// Timestamp calls Printf to print to the standard logger with the trace level and own timestamp. As tag
+// the app name is taken. Other arguments are handled in the manner of fmt.Printf.
+func Timestamp(level Level, timestamp time.Time, tag, format string, v ...interface{}) {
+	std.TimestampPrintf(level, timestamp, tag, format, v...)
 }
 
 // Fatal calls Printf to print to the standard logger with the debug level. As tag
