@@ -41,6 +41,11 @@ func ConnectionString() string {
 	return common.Getenv("CONNECTION_STRING", "")
 }
 
+// InitConnectionString returns the connection string for init defined in the environment variable INIT_CONNECTION_STRING. Default is value CONNECTION_STRING.
+func InitConnectionString() string {
+	return common.Getenv("INIT_CONNECTION_STRING", ConnectionString())
+}
+
 // Hostname returns the defined hostname configured in CONNECTION_STRING
 func Hostname() string {
 	connectionStringUrl := connectionStringUrl()
@@ -109,7 +114,16 @@ type Connection interface {
 
 // ConnectionConfig returns the connection config defined by CONNECTION_STRING environment variable.
 func ConnectionConfig() *pgx.ConnConfig {
-	config, err := pgx.ParseConfig(ConnectionString())
+	return connectionConfig(ConnectionString())
+}
+
+// InitConnectionConfig returns the connection config defined by INIT_CONNECTION_STRING environment variable.
+func InitConnectionConfig() *pgx.ConnConfig {
+	return connectionConfig(InitConnectionString())
+}
+
+func connectionConfig(connectionString string) *pgx.ConnConfig {
+	config, err := pgx.ParseConfig(connectionString)
 	if err != nil {
 		log.Fatal("Database", "Unable to parse database URL: %v", err)
 	}
@@ -117,10 +131,15 @@ func ConnectionConfig() *pgx.ConnConfig {
 }
 
 func ConnectionConfigWithApplicationName(applicationName string) *pgx.ConnConfig {
-	config, err := pgx.ParseConfig(ConnectionString())
-	if err != nil {
-		log.Fatal("Database", "Unable to parse database URL: %v", err)
-	}
+	return connectionConfigWithApplicationName(ConnectionString(), applicationName)
+}
+
+func InitConnectionConfigWithApplicationName(applicationName string) *pgx.ConnConfig {
+	return connectionConfigWithApplicationName(ConnectionString(), applicationName)
+}
+
+func connectionConfigWithApplicationName(connectionString string, applicationName string) *pgx.ConnConfig {
+	config := connectionConfig(connectionString)
 	config.RuntimeParams = map[string]string{
 		"application_name": applicationName,
 	}
@@ -128,7 +147,15 @@ func ConnectionConfigWithApplicationName(applicationName string) *pgx.ConnConfig
 }
 
 func PoolConfig() *pgxpool.Config {
-	config, err := pgxpool.ParseConfig(ConnectionString())
+	return poolConfig(ConnectionString())
+}
+
+func InitPoolConfig() *pgxpool.Config {
+	return poolConfig(InitConnectionString())
+}
+
+func poolConfig(connectionString string) *pgxpool.Config {
+	config, err := pgxpool.ParseConfig(connectionString)
 	if err != nil {
 		log.Fatal("Database", "Unable to parse database URL: %v", err)
 	}
@@ -154,9 +181,24 @@ func NewConnection() *pgx.Conn {
 	return NewConnectionWithContext(context.Background())
 }
 
+// NewInitConnection returns a new connection defined by INIT_CONNECTION_STRING environment variable.
+func NewInitConnection() *pgx.Conn {
+	return NewInitConnectionWithContext(context.Background())
+}
+
 // NewConnectionWithContext returns a new connection defined by CONNECTION_STRING environment variable.
 func NewConnectionWithContext(ctx context.Context) *pgx.Conn {
-	connection, err := pgx.ConnectConfig(ctx, ConnectionConfig())
+	return newConnectionWithContext(ctx, ConnectionConfig())
+}
+
+// NewInitConnectionWithContext returns a new connection defined by INIT_CONNECTION_STRING environment variable.
+func NewInitConnectionWithContext(ctx context.Context) *pgx.Conn {
+	return newConnectionWithContext(ctx, InitConnectionConfig())
+}
+
+// NewConnectionWithContext returns a new connection defined by CONNECTION_STRING environment variable.
+func newConnectionWithContext(ctx context.Context, config *pgx.ConnConfig) *pgx.Conn {
+	connection, err := pgx.ConnectConfig(ctx, config)
 	if err != nil {
 		log.Fatal("Database", "Unable to create connection to database: %v", err)
 	}
@@ -165,7 +207,15 @@ func NewConnectionWithContext(ctx context.Context) *pgx.Conn {
 }
 
 func NewConnectionWithContextAndApplicationName(ctx context.Context, applicationName string) *pgx.Conn {
-	connection, err := pgx.ConnectConfig(ctx, ConnectionConfigWithApplicationName(applicationName))
+	return newConnectionWithContextAndApplicationName(ctx, ConnectionConfigWithApplicationName(applicationName))
+}
+
+func NewInitConnectionWithContextAndApplicationName(ctx context.Context, applicationName string) *pgx.Conn {
+	return newConnectionWithContextAndApplicationName(ctx, InitConnectionConfigWithApplicationName(applicationName))
+}
+
+func newConnectionWithContextAndApplicationName(ctx context.Context, config *pgx.ConnConfig) *pgx.Conn {
+	connection, err := pgx.ConnectConfig(ctx, config)
 	if err != nil {
 		log.Fatal("Database", "Unable to create connection to database: %v", err)
 	}
@@ -174,7 +224,15 @@ func NewConnectionWithContextAndApplicationName(ctx context.Context, application
 }
 
 func NewPool() *pgxpool.Pool {
-	pool, err := pgxpool.ConnectConfig(context.Background(), PoolConfig())
+	return newPool(PoolConfig())
+}
+
+func NewInitPool() *pgxpool.Pool {
+	return newPool(InitPoolConfig())
+}
+
+func newPool(config *pgxpool.Config) *pgxpool.Pool {
+	pool, err := pgxpool.ConnectConfig(context.Background(), config)
 	if err != nil {
 		log.Fatal("Database", "Unable to create pool for database: %v", err)
 	}
@@ -187,7 +245,7 @@ var poolMutex sync.Mutex
 var pool *pgxpool.Pool
 
 // Pool returns the default pool hold by this package. The pool is created if this function is called first time.
-// Afterwards this function returns always the same pool. Don't forget to defer the pool with ClosePool function.
+// Afterward this function returns always the same pool. Don't forget to defer the pool with ClosePool function.
 func Pool() *pgxpool.Pool {
 	if pool == nil {
 		poolMutex.Lock()
