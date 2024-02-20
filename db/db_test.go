@@ -18,6 +18,7 @@ package db
 import (
 	"fmt"
 	"github.com/eliona-smart-building-assistant/go-utils/log"
+	"github.com/jackc/pgx/v4"
 	"github.com/pashagolub/pgxmock"
 	"github.com/stretchr/testify/assert"
 	"testing"
@@ -139,10 +140,20 @@ func TestInsert(t *testing.T) {
 	assert.Nil(t, err)
 }
 
-func connectionMock() pgxmock.PgxConnIface {
+type ConnectionMock struct {
+	pgxmock.PgxConnIface
+}
+
+func (m ConnectionMock) Config() *pgx.ConnConfig {
+	return nil
+}
+
+func connectionMock() ConnectionMock {
 	mock, err := pgxmock.NewConn()
 	if err != nil {
 		log.Fatal("database", "An error '%s' was not expected when opening a mocked database connection", err)
 	}
-	return mock
+	return ConnectionMock{
+		mock,
+	}
 }
