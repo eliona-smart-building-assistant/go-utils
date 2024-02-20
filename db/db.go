@@ -112,6 +112,21 @@ type Connection interface {
 	Begin(ctx context.Context) (pgx.Tx, error)
 }
 
+func GetConnectionConfig(conn *Connection) *pgx.ConnConfig {
+	if pgxConn, ok := interface{}(conn).(pgx.Conn); ok {
+		return pgxConn.Config()
+	} else if pgxPool, ok := interface{}(conn).(pgxpool.Pool); ok {
+		if pgxPool.Config() != nil {
+			return pgxPool.Config().ConnConfig
+		}
+	} else if pgxTx, ok := interface{}(conn).(pgx.Tx); ok {
+		if pgxTx.Conn() != nil {
+			return pgxTx.Conn().Config()
+		}
+	}
+	return nil
+}
+
 // ConnectionConfig returns the connection config defined by CONNECTION_STRING environment variable.
 func ConnectionConfig() *pgx.ConnConfig {
 	return connectionConfig(ConnectionString())
