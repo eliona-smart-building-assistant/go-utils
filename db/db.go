@@ -113,13 +113,18 @@ type Connection interface {
 }
 
 func GetConnectionConfig(conn *Connection) *pgx.ConnConfig {
-	if pgxConn, ok := interface{}(conn).(pgx.Conn); ok {
-		return pgxConn.Config()
-	} else if pgxPool, ok := interface{}(conn).(pgxpool.Pool); ok {
-		if pgxPool.Config() != nil {
+	if conn == nil {
+		return nil
+	}
+	if pgxConn, ok := (*conn).(*pgx.Conn); ok {
+		if pgxConn != nil {
+			return pgxConn.Config()
+		}
+	} else if pgxPool, ok := (*conn).(*pgxpool.Pool); ok {
+		if pgxPool != nil && pgxPool.Config() != nil {
 			return pgxPool.Config().ConnConfig
 		}
-	} else if pgxTx, ok := interface{}(conn).(pgx.Tx); ok {
+	} else if pgxTx, ok := (*conn).(pgx.Tx); ok {
 		if pgxTx.Conn() != nil {
 			return pgxTx.Conn().Config()
 		}
