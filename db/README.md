@@ -10,10 +10,13 @@ import "github.com/eliona-smart-building-assistant/go-utils/db"
 ```
 
 You have to define an environment variable named CONNECTION_STRING which defines the database
-that should be connected to.
+that should be connected to. It is also possible to define INIT_CONNECTION_STRING which is used to
+create database objects like schemas or tables. If INIT_CONNECTION_STRING is not defined the
+CONNECTION_STRING is used as default.
 
 ```bash
 export CONNECTION_STRING=postgres://user:secret@localhost
+export INIT_CONNECTION_STRING=postgres://user:secret@localhost
 ```
 
 ## Usage
