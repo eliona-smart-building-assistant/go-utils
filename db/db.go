@@ -155,7 +155,7 @@ func ConnectionConfigWithApplicationName(applicationName string) *pgx.ConnConfig
 }
 
 func InitConnectionConfigWithApplicationName(applicationName string) *pgx.ConnConfig {
-	return connectionConfigWithApplicationName(ConnectionString(), applicationName)
+	return connectionConfigWithApplicationName(InitConnectionString(), applicationName)
 }
 
 func connectionConfigWithApplicationName(connectionString string, applicationName string) *pgx.ConnConfig {
