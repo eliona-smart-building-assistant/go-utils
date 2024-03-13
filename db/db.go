@@ -55,9 +55,15 @@ func Hostname() string {
 	return ""
 }
 
-// Port returns the defined port configured in CONNECTION_STRING
-func Port() int {
-	connectionStringUrl := connectionStringUrl()
+func InitHostname() string {
+	connectionStringUrl := initConnectionStringUrl()
+	if connectionStringUrl != nil {
+		return connectionStringUrl.Hostname()
+	}
+	return ""
+}
+
+func port(connectionStringUrl *url.URL) int {
 	if connectionStringUrl != nil {
 		port, err := strconv.Atoi(connectionStringUrl.Port())
 		if err == nil {
@@ -67,18 +73,34 @@ func Port() int {
 	return 0
 }
 
-// Username returns the defined username configured in CONNECTION_STRING
-func Username() string {
-	connectionStringUrl := connectionStringUrl()
+// Port returns the defined port configured in CONNECTION_STRING
+func Port() int {
+	return port(connectionStringUrl())
+}
+
+// InitPort returns the defined port configured in INIT_CONNECTION_STRING
+func InitPort() int {
+	return port(initConnectionStringUrl())
+}
+
+func username(connectionStringUrl *url.URL) string {
 	if connectionStringUrl != nil {
 		return connectionStringUrl.User.Username()
 	}
 	return ""
 }
 
-// Password returns the defined password configured in CONNECTION_STRING
-func Password() string {
-	connectionStringUrl := connectionStringUrl()
+// Username returns the defined username configured in CONNECTION_STRING
+func Username() string {
+	return username(connectionStringUrl())
+}
+
+// InitUsername returns the defined username configured in INIT_CONNECTION_STRING
+func InitUsername() string {
+	return username(initConnectionStringUrl())
+}
+
+func password(connectionStringUrl *url.URL) string {
 	if connectionStringUrl != nil {
 		password, exists := connectionStringUrl.User.Password()
 		if exists {
@@ -88,17 +110,43 @@ func Password() string {
 	return ""
 }
 
-// DatabaseName returns the defined database name configured in CONNECTION_STRING
-func DatabaseName() string {
-	connectionStringUrl := connectionStringUrl()
+// Password returns the defined password configured in CONNECTION_STRING
+func Password() string {
+	return password(connectionStringUrl())
+}
+
+// InitPassword returns the defined password configured in INIT_CONNECTION_STRING
+func InitPassword() string {
+	return password(initConnectionStringUrl())
+}
+
+func databaseName(connectionStringUrl *url.URL) string {
 	if connectionStringUrl != nil && len(connectionStringUrl.Path) > 1 {
 		return connectionStringUrl.Path[1:]
 	}
 	return common.Getenv("PGDATABASE", "")
 }
 
+// DatabaseName returns the defined database name configured in CONNECTION_STRING
+func DatabaseName() string {
+	return databaseName(connectionStringUrl())
+}
+
+// InitDatabaseName returns the defined database name configured in INIT_CONNECTION_STRING
+func InitDatabaseName() string {
+	return databaseName(initConnectionStringUrl())
+}
+
 func connectionStringUrl() *url.URL {
 	parse, err := url.Parse(ConnectionString())
+	if err != nil {
+		return nil
+	}
+	return parse
+}
+
+func initConnectionStringUrl() *url.URL {
+	parse, err := url.Parse(InitConnectionString())
 	if err != nil {
 		return nil
 	}
@@ -301,16 +349,15 @@ func Database(applicationName string) *sql.DB {
 	return database
 }
 
-// NewDatabase returns always a new database connection from CONNECTION_STRING.
-func NewDatabase(applicationName string) *sql.DB {
-	database, err := sql.Open("postgres", fmt.Sprintf("host='%s' port='%d' user='%s' password='%s' dbname='%s' application_name='%s'", Hostname(), Port(), Username(), Password(), DatabaseName(), applicationName))
+func newDatabase(connectionString string) *sql.DB {
+	database, err := sql.Open("postgres", connectionString)
 	if err != nil {
 		log.Fatal("Database", "Cannot connect to database: %v", err)
 	}
 	err = database.Ping()
 	if err != nil {
 		log.Debug("Database", "Try Database connection without SSL: %v", err)
-		database, err = sql.Open("postgres", fmt.Sprintf("host='%s' port='%d' user='%s' password='%s' dbname='%s' sslmode=disable application_name='%s'", Hostname(), Port(), Username(), Password(), DatabaseName(), applicationName))
+		database, err = sql.Open("postgres", fmt.Sprintf(connectionString+" sslmode=disable"))
 		if err != nil {
 			log.Fatal("Database", "Cannot connect to database: %v", err)
 		}
@@ -321,6 +368,16 @@ func NewDatabase(applicationName string) *sql.DB {
 	}
 	log.Debug("Database", "Database created")
 	return database
+}
+
+// NewDatabase returns always a new database connection from CONNECTION_STRING.
+func NewDatabase(applicationName string) *sql.DB {
+	return newDatabase(fmt.Sprintf("host='%s' port='%d' user='%s' password='%s' dbname='%s' application_name='%s'", Hostname(), Port(), Username(), Password(), DatabaseName(), applicationName))
+}
+
+// NewInitDatabase returns always a new database connection from CONNECTION_STRING.
+func NewInitDatabase(applicationName string) *sql.DB {
+	return newDatabase(fmt.Sprintf("host='%s' port='%d' user='%s' password='%s' dbname='%s' application_name='%s'", InitHostname(), InitPort(), InitUsername(), InitPassword(), InitDatabaseName(), applicationName))
 }
 
 // CloseDatabase closes the default database hold by this package.
