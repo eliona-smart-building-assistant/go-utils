@@ -177,6 +177,15 @@ func Ptr[T any](v T) *T {
 	return &v
 }
 
+// Val return the value from pointer or if nil the default value
+func Val[T any](v *T) T {
+	if v != nil {
+		return *v
+	}
+	var val T
+	return val
+}
+
 // StructToMap converts a struct to map of struct properties
 func StructToMap(data any) map[string]interface{} {
 	d, _ := json.Marshal(&data)
