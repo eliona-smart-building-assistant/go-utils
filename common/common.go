@@ -242,7 +242,10 @@ func evaluateRule(value, rule string) (bool, error) {
 // The rules are a two-dimensional array where the first dimension is joined by
 // a logical disjunction ("OR") and the second one by a logical conjunction ("AND").
 //
-// The properties can be the for example the name and MAC address of a device.
+// The function returns true if at least one set of rules is fully matched by
+// the properties, and false otherwise. If no rules are provided, it returns true.
+//
+// The properties can be for example the name and MAC address of a device.
 func Filter(rules [][]FilterRule, properties map[string]string) (bool, error) {
 	return filter(evaluateRule, rules, properties)
 }
