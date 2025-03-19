@@ -407,7 +407,12 @@ func ListenWithContext[T any](ctx context.Context, conn *pgx.Conn, channel strin
 			log.Error("Database", "Unmarshal error during listening: %v", err)
 			errors <- err
 		} else {
-			payloads <- payload
+			select {
+			case payloads <- payload:
+				// sent
+			default:
+				// not sent, blocked
+			}
 		}
 	}
 }
@@ -433,7 +438,12 @@ func ListenRawWithContext(ctx context.Context, conn *pgx.Conn, channel string, p
 		if notification != nil {
 			var payload = notification.Payload
 			payload = strings.TrimPrefix(payload, "~") // for deletion
-			payloads <- payload
+			select {
+			case payloads <- payload:
+				// sent
+			default:
+				// not sent, blocked
+			}
 		}
 	}
 }
@@ -539,7 +549,12 @@ func Query[T any](connection Connection, sql string, results chan T, args ...int
 				log.Error("Database", "Error scanning result '%s': %v", sql, err)
 				return err
 			}
-			results <- result
+			select {
+			case results <- result:
+				// sent
+			default:
+				// not sent, blocked
+			}
 		}
 	}
 	return nil

@@ -202,7 +202,12 @@ func ListenWebSocket[T any](conn *websocket.Conn, objects chan T) error {
 		if err != nil || object == nil {
 			return err
 		}
-		objects <- *object
+		select {
+		case objects <- *object:
+			// sent
+		default:
+			// not sent, blocked
+		}
 	}
 }
 
