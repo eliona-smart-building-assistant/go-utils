@@ -34,6 +34,7 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"time"
 )
 
 // ConnectionString returns the connection string defined in the environment variable CONNECTION_STRING.
@@ -407,11 +408,11 @@ func ListenWithContext[T any](ctx context.Context, conn *pgx.Conn, channel strin
 			log.Error("Database", "Unmarshal error during listening: %v", err)
 			errors <- err
 		} else {
+			timeout := time.After(1 * time.Minute)
 			select {
 			case payloads <- payload:
-				// sent
-			default:
-				// not sent, blocked
+			case <-timeout:
+				log.Warn("websocket", "payloads channel full, producer is dropping messages")
 			}
 		}
 	}
@@ -438,11 +439,11 @@ func ListenRawWithContext(ctx context.Context, conn *pgx.Conn, channel string, p
 		if notification != nil {
 			var payload = notification.Payload
 			payload = strings.TrimPrefix(payload, "~") // for deletion
+			timeout := time.After(1 * time.Minute)
 			select {
 			case payloads <- payload:
-				// sent
-			default:
-				// not sent, blocked
+			case <-timeout:
+				log.Warn("websocket", "payloads channel full, producer is dropping messages")
 			}
 		}
 	}
@@ -549,11 +550,11 @@ func Query[T any](connection Connection, sql string, results chan T, args ...int
 				log.Error("Database", "Error scanning result '%s': %v", sql, err)
 				return err
 			}
+			timeout := time.After(1 * time.Minute)
 			select {
 			case results <- result:
-				// sent
-			default:
-				// not sent, blocked
+			case <-timeout:
+				log.Warn("websocket", "results channel full, producer is dropping messages")
 			}
 		}
 	}

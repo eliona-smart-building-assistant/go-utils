@@ -202,11 +202,12 @@ func ListenWebSocket[T any](conn *websocket.Conn, objects chan T) error {
 		if err != nil || object == nil {
 			return err
 		}
+
+		timeout := time.After(1 * time.Minute)
 		select {
 		case objects <- *object:
-			// sent
-		default:
-			// not sent, blocked
+		case <-timeout:
+			log.Warn("websocket", "objects channel full, producer is dropping messages")
 		}
 	}
 }
