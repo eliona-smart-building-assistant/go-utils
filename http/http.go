@@ -125,7 +125,11 @@ func newRequestWithBearer(url string, method string, token string) (*http.Reques
 
 // NewWebSocketConnectionWithApiKey creates a connection to a web socket. The url is authenticated with a named api key.
 func NewWebSocketConnectionWithApiKey(url string, key string, value string) (*websocket.Conn, error) {
-	dialer := websocket.Dialer{}
+	return NewWebSocketConnectionWithApiKeyTls(url, key, value, websocket.Dialer{})
+}
+
+// NewWebSocketConnectionWithApiKeyTls creates a connection to a web socket. The url is authenticated with a named api key.
+func NewWebSocketConnectionWithApiKeyTls(url string, key string, value string, dialer websocket.Dialer) (*websocket.Conn, error) {
 	header := http.Header{}
 	header.Set(key, value)
 	url = strings.Replace(url, "https://", "wss://", -1)
