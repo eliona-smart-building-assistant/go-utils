@@ -355,7 +355,7 @@ func ReadWithStatusCode[T any](request *http.Request, timeout time.Duration, che
 
 	payload, statusCode, err := DoWithStatusCode(request, timeout, checkCertificate)
 	if err != nil {
-		return value, statusCode, fmt.Errorf("do with status code: %v", err)
+		return value, statusCode, fmt.Errorf("do with status code: %w (%s)", err, string(payload))
 	}
 
 	if len(payload) == 0 {
@@ -366,7 +366,7 @@ func ReadWithStatusCode[T any](request *http.Request, timeout time.Duration, che
 		err := json.Unmarshal(payload, &value)
 		if err != nil {
 			log.Error("Http", "Unmarshal error: %v (%s)", err, string(payload))
-			return value, statusCode, fmt.Errorf("unmarshaling: %v", err)
+			return value, statusCode, fmt.Errorf("unmarshaling: %w (%s)", err, string(payload))
 		}
 		return value, statusCode, nil
 	} else if _, ok := interface{}(value).(string); ok {
@@ -374,7 +374,7 @@ func ReadWithStatusCode[T any](request *http.Request, timeout time.Duration, che
 	} else if _, ok := interface{}(value).([]byte); ok {
 		return any(payload).(T), statusCode, nil
 	} else {
-		return value, statusCode, fmt.Errorf("can't use payload as type %T", value)
+		return value, statusCode, fmt.Errorf("can't use payload (%s) as type %T", string(payload), value)
 	}
 }
 
