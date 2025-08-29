@@ -69,6 +69,10 @@ func NewPostRequestWithHeaders(url string, body any, headers map[string]string) 
 	return newRequestWithHeadersAndBody(url, body, "POST", headers)
 }
 
+func NewPutRequestWithHeaders(url string, body any, headers map[string]string) (*http.Request, error) {
+	return newRequestWithHeadersAndBody(url, body, "PUT", headers)
+}
+
 func encodeForm(form map[string][]string) string {
 	values := url.Values{}
 	for name, vs := range form {
