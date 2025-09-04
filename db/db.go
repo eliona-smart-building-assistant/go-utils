@@ -20,13 +20,6 @@ import (
 	"database/sql"
 	"encoding/json"
 	"fmt"
-	"github.com/eliona-smart-building-assistant/go-utils/common"
-	"github.com/eliona-smart-building-assistant/go-utils/log"
-	"github.com/jackc/pgconn"
-	"github.com/jackc/pgtype"
-	"github.com/jackc/pgx/v4"
-	"github.com/jackc/pgx/v4/pgxpool"
-	_ "github.com/volatiletech/sqlboiler/v4/drivers/sqlboiler-psql/driver"
 	"io/ioutil"
 	"net/url"
 	"path/filepath"
@@ -35,6 +28,14 @@ import (
 	"strings"
 	"sync"
 	"time"
+
+	"github.com/eliona-smart-building-assistant/go-utils/common"
+	"github.com/eliona-smart-building-assistant/go-utils/log"
+	"github.com/jackc/pgconn"
+	"github.com/jackc/pgtype"
+	"github.com/jackc/pgx/v4"
+	"github.com/jackc/pgx/v4/pgxpool"
+	_ "github.com/volatiletech/sqlboiler/v4/drivers/sqlboiler-psql/driver"
 )
 
 // ConnectionString returns the connection string defined in the environment variable CONNECTION_STRING.
@@ -350,19 +351,33 @@ func Database(applicationName string) *sql.DB {
 	return database
 }
 
-func newDatabase(connectionString string) *sql.DB {
+// DatabaseWithContext returns the configured database connection from CONNECTION_STRING. If once opened this method returns always the same database.
+//
+// Context will be used only during connection check when new database instance is created.
+func DatabaseWithContext(ctx context.Context, applicationName string) *sql.DB {
+	if database == nil {
+		databaseMutex.Lock()
+		if database == nil {
+			database = NewDatabaseWithContext(ctx, applicationName)
+		}
+		databaseMutex.Unlock()
+	}
+	return database
+}
+
+func newDatabase(ctx context.Context, connectionString string) *sql.DB {
 	database, err := sql.Open("postgres", connectionString)
 	if err != nil {
 		log.Fatal("Database", "Cannot connect to database: %v", err)
 	}
-	err = database.Ping()
+	err = database.PingContext(ctx)
 	if err != nil {
 		log.Debug("Database", "Try Database connection without SSL: %v", err)
-		database, err = sql.Open("postgres", fmt.Sprintf(connectionString+" sslmode=disable"))
+		database, err = sql.Open("postgres", connectionString+" sslmode=disable")
 		if err != nil {
 			log.Fatal("Database", "Cannot connect to database: %v", err)
 		}
-		err = database.Ping()
+		err = database.PingContext(ctx)
 		if err != nil {
 			log.Fatal("Database", "Cannot connect to database: %v", err)
 		}
@@ -373,12 +388,38 @@ func newDatabase(connectionString string) *sql.DB {
 
 // NewDatabase returns always a new database connection from CONNECTION_STRING.
 func NewDatabase(applicationName string) *sql.DB {
-	return newDatabase(fmt.Sprintf("host='%s' port='%d' user='%s' password='%s' dbname='%s' application_name='%s'", Hostname(), Port(), Username(), Password(), DatabaseName(), applicationName))
+	return newDatabase(
+		context.Background(),
+		fmt.Sprintf("host='%s' port='%d' user='%s' password='%s' dbname='%s' application_name='%s'",
+			Hostname(), Port(), Username(), Password(), DatabaseName(), applicationName))
+}
+
+// NewDatabaseWithContext returns always a new database connection from CONNECTION_STRING.
+//
+// Context will be used only during connection check.
+func NewDatabaseWithContext(ctx context.Context, applicationName string) *sql.DB {
+	return newDatabase(
+		ctx,
+		fmt.Sprintf("host='%s' port='%d' user='%s' password='%s' dbname='%s' application_name='%s'",
+			Hostname(), Port(), Username(), Password(), DatabaseName(), applicationName))
 }
 
 // NewInitDatabase returns always a new database connection from CONNECTION_STRING.
 func NewInitDatabase(applicationName string) *sql.DB {
-	return newDatabase(fmt.Sprintf("host='%s' port='%d' user='%s' password='%s' dbname='%s' application_name='%s'", InitHostname(), InitPort(), InitUsername(), InitPassword(), InitDatabaseName(), applicationName))
+	return newDatabase(
+		context.Background(),
+		fmt.Sprintf("host='%s' port='%d' user='%s' password='%s' dbname='%s' application_name='%s'",
+			InitHostname(), InitPort(), InitUsername(), InitPassword(), InitDatabaseName(), applicationName))
+}
+
+// NewInitDatabaseWithContext returns always a new database connection from CONNECTION_STRING.
+//
+// Context will be used only during connection check.
+func NewInitDatabaseWithContext(ctx context.Context, applicationName string) *sql.DB {
+	return newDatabase(
+		ctx,
+		fmt.Sprintf("host='%s' port='%d' user='%s' password='%s' dbname='%s' application_name='%s'",
+			InitHostname(), InitPort(), InitUsername(), InitPassword(), InitDatabaseName(), applicationName))
 }
 
 // CloseDatabase closes the default database hold by this package.
